@@ -20,8 +20,8 @@ export async function main(ns) {
   let servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
   servers.sort(
     function(a,b){
-      return (ns.hackAnalyze(b) * ns.getServerMaxMoney(b) * Math.min(Math.floor(ns.getWeakenTime(b) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
-      - (ns.hackAnalyze(a) * ns.getServerMaxMoney(a) * Math.min(Math.floor(ns.getWeakenTime(a) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
+      return (ns.hackAnalyze(b) * ns.hackAnalyzeChance(b) * ns.getServerMaxMoney(b) * Math.min(Math.floor(ns.getWeakenTime(b) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
+      - (ns.hackAnalyze(a) * ns.hackAnalyzeChance(a) * ns.getServerMaxMoney(a) * Math.min(Math.floor(ns.getWeakenTime(a) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
     }
   )
 
@@ -84,8 +84,8 @@ export async function main(ns) {
     servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
     servers.sort(
       function(a,b){
-        return (ns.hackAnalyze(b) * ns.getServerMaxMoney(b) * Math.min(Math.floor(ns.getWeakenTime(b) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
-        - (ns.hackAnalyze(a) * ns.getServerMaxMoney(a) * Math.min(Math.floor(ns.getWeakenTime(a) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
+        return (ns.hackAnalyze(b) * ns.hackAnalyzeChance(b) * ns.getServerMaxMoney(b) * Math.min(Math.floor(ns.getWeakenTime(b) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
+        - (ns.hackAnalyze(a) * ns.hackAnalyzeChance(a) * ns.getServerMaxMoney(a) * Math.min(Math.floor(ns.getWeakenTime(a) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
       }
     )
   }
