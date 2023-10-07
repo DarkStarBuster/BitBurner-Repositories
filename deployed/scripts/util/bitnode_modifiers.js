@@ -29,7 +29,7 @@ export const bitnode_mults = {
   RepToDonateToFaction      : {larger: false, smaller: true},
   CorporationDivisions      : {larger: true, smaller: false},
   CorporationValuation      : {larger: true, smaller: false},
-  GangSoftcap               : {larger: false, smaller: true},
+  GangSoftcap               : {larger: true, smaller: false},
   // Costs for things
   FourSigmaMarketDataApiCost: {larger: false, smaller: true},
   FourSigmaMarketDataCost   : {larger: false, smaller: true},
