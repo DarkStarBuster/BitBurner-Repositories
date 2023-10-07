@@ -355,6 +355,103 @@ function report_servers(ns, servers, filter){
   }
 }
 
+function display_all_bitnode_info(ns) {
+  const MAX_NUM_BITNODES = 13
+  const MAX_BITNODE_LEVEL = 1
+
+  let bitnode_info = ns.getBitNodeMultipliers() // Gets Currnet Bitnodes mult info
+  let keys = []
+  let max_key_length = 0
+
+  for (let key in bitnode_info) {
+    if (key.length > max_key_length) {
+      max_key_length = key.length
+    }
+    keys.push(key)
+  }
+
+  // Holds the array of strings that display the table
+  let table_strings = []
+  let bitnode_title = ""
+  let bitnode = ""
+  table_strings.length = keys.length
+  table_strings.fill("")
+
+  let dflt_val = 1
+  let larger_colour = colours.red
+  let smaller_colour = colours.green
+
+  for (let i = 1; i <= MAX_NUM_BITNODES; i++) {
+    for (let j = 1; j <= MAX_BITNODE_LEVEL; j++) {
+      bitnode_info = ns.getBitNodeMultipliers(i,j)
+
+      bitnode = "BN" + i + "." + j
+
+      bitnode_title =
+        bitnode_title
+      + (bitnode_title == "" ? "" : "|")
+      + colours.white + bitnode.padStart(6) + " "
+      + colours.black 
+
+      for (let k = 0; k < keys.length; k++) {
+        dflt_val = 1
+        larger_colour = colours.red
+        smaller_colour = colours.green
+        if (
+            bitnode_mults[keys[k]].default != undefined
+        &&  bitnode_mults[keys[k]].default != dflt_val
+        ) {
+          dflt_val = bitnode_mults[keys[k]].default
+        }
+        if (bitnode_mults[keys[k]].larger) {
+          larger_colour = colours.green
+          smaller_colour = colours.red
+        }
+        table_strings[k] = 
+          table_strings[k]                       // Previous String
+        + (table_strings[k] == "" ? "" : "|")    // Seperator from Previous String if needed
+        + (bitnode_info[keys[k]] == dflt_val ? colours.yellow : (bitnode_info[keys[k]] > dflt_val  ? larger_colour : smaller_colour))
+        //+ " " + keys[k].padEnd(max_key_length) + ": "
+        + (keys[k] == "StaneksGiftExtraSize" ?
+            String( (bitnode_info[keys[k]] < 0 ? "" : "+") + bitnode_info[keys[k]]).padStart(6)
+          : ns.formatPercent(bitnode_info[keys[k]] / dflt_val,0).padStart(6)
+          ) + " "
+        + colours.black //+ "|"
+      }
+    }
+  }
+
+  let table = ""
+  for (let i = 0; i < table_strings.length; i++) {
+    table = table
+    + colours.black + "║ "
+    + colours.white + keys[i].padEnd(max_key_length)
+    + colours.black + " ║"
+    + table_strings[i] + "║"
+    + "\n"
+  }
+
+  let table_width = String(
+    "║ "
+  + "".padEnd(max_key_length)
+  + " ║"
+  + "".padEnd(8 * MAX_NUM_BITNODES)
+  ).length
+
+  let title = "All Bitnode Modifiers"
+  ns.tprint("\n"
+  + colours.black + "╔═"
+  + colours.white + title
+  + colours.black + "".padEnd(table_width - (title.length + 3), "═") + "╗\n"
+  + colours.black + "║ " + "".padEnd(max_key_length) + " ║"
+  + bitnode_title + "║\n"
+  + "╠" + "".padEnd(table_width - 2, "═") + "╣\n"
+  + table
+  + "╚" + "".padEnd(table_width - 2, "═") + "╝"
+  )
+
+}
+
 /**
  * @param {NS} ns
  */
@@ -557,7 +654,8 @@ export async function main(ns) {
     ["report",""],
     ["port_info",""],
     ["server_info",""],
-    ["bitnode_info",false]
+    ["bitnode_info",false],
+    ["all_bitnode_info",false]
   ])
   var args_length = ns.args.length
   var unknown_param = false
@@ -572,6 +670,7 @@ export async function main(ns) {
         &&  ns.args[i] != "--port_info"
         &&  ns.args[i] != "--server_info"
         &&  ns.args[i] != "--bitnode_info"
+        &&  ns.args[i] != "--all_bitnode_info"
       ) {
         unknown_param = true
       }
@@ -665,5 +764,9 @@ export async function main(ns) {
 
   if (arg_flags.bitnode_info) {
     display_bitnode_info(ns)
+  }
+
+  if (arg_flags.all_bitnode_info) {
+    display_all_bitnode_info(ns)
   }
 }
