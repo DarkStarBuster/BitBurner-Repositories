@@ -165,8 +165,23 @@ export async function main(ns) {
 
     hackable_servers.sort(
       function(a,b){
-         return (ns.hackAnalyze(b) * ns.hackAnalyzeChance(b) * ns.getServerMaxMoney(b) * Math.min(Math.floor(ns.getWeakenTime(b) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
-          - (ns.hackAnalyze(a) * ns.hackAnalyzeChance(a) * ns.getServerMaxMoney(a) * Math.min(Math.floor(ns.getWeakenTime(a) / HACK_BATCH_TIME_LIMIT), HACK_BATCH_LIMIT))
+        let player = ns.getPlayer()
+        let server_a = ns.getServer(a)
+        let server_b = ns.getServer(b)
+        server_a.hackDifficulty = server_a.minDifficulty
+        server_a.moneyAvailable = server_a.moneyMax
+        server_b.hackDifficulty = server_b.minDifficulty
+        server_b.moneyAvailable = server_b.moneyMax
+  
+        let server_a_hack_percent = ns.formulas.hacking.hackPercent(server_a, player)
+        let server_a_hack_chance  = ns.formulas.hacking.hackChance (server_a, player)
+        let server_a_weaken_time  = ns.formulas.hacking.weakenTime (server_a, player)
+        let server_b_hack_percent = ns.formulas.hacking.hackPercent(server_b, player)
+        let server_b_hack_chance  = ns.formulas.hacking.hackChance (server_b, player)
+        let server_b_weaken_time  = ns.formulas.hacking.weakenTime (server_b, player)
+  
+        return (server_b_hack_percent * server_b_hack_chance * server_b.moneyMax)
+        - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
       }
     )
 
