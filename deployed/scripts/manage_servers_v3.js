@@ -312,9 +312,9 @@ async function check_root(ns, force_update) {
           ns.toast("Successfully Rooted \"" + server + "\"", "success", 5000)
         }
 
-        if (!ns.fileExists("/scripts/util/weaken.js",server)) ns.scp("/scripts/util/weaken.js", server)
-        if (!ns.fileExists("/scripts/util/grow.js",server))   ns.scp("/scripts/util/grow.js", server)
-        if (!ns.fileExists("/scripts/util/hack.js",server))   ns.scp("/scripts/util/hack.js", server)
+        if (!ns.fileExists("/scripts/util/weaken_v2.js",server)) ns.scp("/scripts/util/weaken_v2.js", server)
+        if (!ns.fileExists("/scripts/util/grow_v2.js",server))   ns.scp("/scripts/util/grow_v2.js", server)
+        if (!ns.fileExists("/scripts/util/hack_v2.js",server))   ns.scp("/scripts/util/hack_v2.js", server)
 
         if (server.includes("pserv")) {
           if (!ns.fileExists("/scripts/util/share.js",server))  ns.scp("/scripts/util/share.js", server)
