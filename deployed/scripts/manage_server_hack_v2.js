@@ -411,11 +411,15 @@ export async function main(ns) {
         let weaken_grow_pid = ns.exec("/scripts/util/weaken_v2.js", server_to_use, batch_info.batch_weaken_grow.threads, ...weaken_grow_args)
 
         if (
-            hack_pid === 0
+            hack_pid        === 0
         ||  weaken_hack_pid === 0
-        ||  grow_pid === 0
+        ||  grow_pid        === 0
         ||  weaken_grow_pid === 0
         ) {
+          if (!(hack_pid        === 0)) ns.kill(hack_pid)
+          if (!(weaken_hack_pid === 0)) ns.kill(weaken_hack_pid)
+          if (!(grow_pid        === 0)) ns.kill(grow_pid)
+          if (!(weaken_grow_pid === 0)) ns.kill(weaken_grow_pid)
           ns.print("Had to kill batch hack processes due to missing pid")
           ns.toast("Had to kill batch hack processes due to missing pid", "warning")
         }
