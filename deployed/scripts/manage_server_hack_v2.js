@@ -439,8 +439,8 @@ export async function main(ns) {
     }
     let end = Date.now()
 
-    ns.print("Execution time of loop: " + (end - start) + " / " + control_params.hacker.hack_batch_time_interval)
-
-    await ns.sleep(control_params.hacker.hack_batch_time_interval)
+    let await_time = Math.max(control_params.hacker.hack_batch_time_interval - (end - start), 100)
+    ns.print("Execution time of loop: " + (end - start) + " /" + await_time + " / " + control_params.hacker.hack_batch_time_interval)
+    await ns.sleep(await_time)
   }
 }
