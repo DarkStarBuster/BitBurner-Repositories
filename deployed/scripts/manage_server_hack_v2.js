@@ -1,21 +1,3 @@
-const RAM_INFO = {
-  //[server] = {
-  //  assigned_ram: <number>,
-  //  free_ram    : <number>,
-  //  processes   : {
-  //    [pid]: {
-  //      ram_cost: <number>,
-  //      filename: <string>,
-  //      target  : <string>
-  //    },
-  //    [pid]: {
-  //      ...
-  //  }
-  //},
-  //[server] = {
-  // ...
-}
-
 /**
  * @param {NS} ns 
  * @param {string} target_server 
