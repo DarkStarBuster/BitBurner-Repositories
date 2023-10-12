@@ -16,76 +16,6 @@ const RAM_INFO = {
   // ...
 }
 
-async function check_ram_usage(ns, batches_needed, ram_needed, ram_request_handler, ram_provide_handler) {
-  let total_ram_needed = batches_needed * ram_needed
-
-  let total_ram_found = 0
-  for (let server in RAM_INFO) {
-    total_ram_found += RAM_INFO[server].assigned_ram
-  }
-
-  if (total_ram_found < total_ram_needed) {
-    // We need to request more RAM
-    
-    // Attempt 1: Be Greedy and see if we can get a single server with all the RAM we need
-    let ram_request = {
-      "action"   : "request_ram",
-      "amount"   : total_ram_needed,
-      "requester": ns.pid
-    }
-  
-    while(!ram_request_handler.tryWrite(JSON.stringify(ram_request))){
-      await ns.sleep(50)
-    }
-
-    let awaiting_response = true
-    let ram_response = {}
-    while (awaiting_response) {
-      while(ram_provide_handler.empty()) {
-        await ns.sleep(50)
-      }
-      ram_response = JSON.parse(ram_provide_handler.peek())
-      if (parseInt(ram_response.requester) === ns.pid) {
-        awaiting_response = false
-        ram_provide_handler.read()
-      }
-      else{
-        await ns.sleep(50)
-      }
-    }
-
-    if (!(ram_response.result === "OK")) {
-      // Being Greedy didn't work.
-      // We will have to request each batchs RAM individually
-      let ram_batch_request = {
-        "action"   : "request_batch_ram",
-        "amount"   : ram_needed,
-        "batches"  : batches_needed,
-        "requester": ns.pid
-      }
-    }
-    else {
-      // Being Greedy DID work.
-      // We can release all other RAM we have and just use this one server for all our scripts.
-      if (RAM_INFO[ram_response.server]) {
-        // We alredy have RAM on the server we've been granted more on
-      }
-      else {
-        // The Server is new to us
-        RAM_INFO[ram_response.server] = {
-          "assigned_ram": ram_response.amount,
-          "free_ram"    : ram_response.amount,
-          "processes"   : {}
-        }
-      }
-    }
-
-  }
-  if (total_ram_found > total_ram_needed) {
-    // We have more RAM than we need
-  }
-}
-
 /**
  * @param {NS} ns 
  * @param {string} target_server 
@@ -153,13 +83,21 @@ function construct_batch(ns, target_server, control_params) {
   let weaken_grow_delay = 100
   let grow_delay = (weaken_time - grow_time) + 50
 
-  
-  let ram_needed = 
-    1.75 * (weaken_threads_for_hack + weaken_threads_for_growth) // Weaken RAM
-  + 1.75 * grow_threads // Grow RAM
-  + 1.7  * hack_threads
+  // Avoid Floating Point imprecission when multiplying. I mean really.
+  let ram_needed = 0
+  for (let i = 0; i < (weaken_threads_for_hack + weaken_threads_for_growth + grow_threads); i++) {
+    ram_needed = ram_needed + 1.75
+  }
+  for (let i = 0; i < hack_threads; i++) {
+    ram_needed = ram_needed + 1.7
+  }
+  // ram_needed = 
+  //   1.75 * (weaken_threads_for_hack + weaken_threads_for_growth) // Weaken RAM
+  // + 1.75 * grow_threads // Grow RAM
+  // + 1.7  * hack_threads
 
   batch_info.batch_cnt_to_saturate = Math.floor(weaken_time / control_params.hacker.hack_batch_time_interval)
+  batch_info.weaken_time = weaken_time
   batch_info.ram_needed = ram_needed
   batch_info.batch_hack = {}
   batch_info.batch_hack.threads = hack_threads
@@ -190,25 +128,33 @@ async function request_ram(ns, ram_needed, ram_request_handler, ram_provide_hand
     "requester": ns.pid
   }
 
+  ns.print("Awaiting space in RAM Request Handler to request new RAM.")
   while(!ram_request_handler.tryWrite(JSON.stringify(ram_request))){
     await ns.sleep(50)
   }
+  ns.print("Finished Awaiting RAM Request Handler.")
 
   let awaiting_response = true
   let ram_response = {}
+  ns.print("Awaiting Response.")
   while (awaiting_response) {
+    ns.print("Wait until Provider is not empty")
     while(ram_provide_handler.empty()) {
       await ns.sleep(50)
     }
+    ns.print("Provider is not empty: " + JSON.parse(ram_provide_handler.peek()))
     ram_response = JSON.parse(ram_provide_handler.peek())
     if (parseInt(ram_response.requester) === ns.pid) {
+      ns.print("This is a response for us.")
       awaiting_response = false
       ram_provide_handler.read()
     }
     else{
+      ns.print("This is not a response for us.")
       await ns.sleep(50)
     }
   }
+  ns.print("Finished Awaiting Response.")
 
   if (!(ram_response.result === "OK")) {
     return Promise.resolve({
@@ -232,7 +178,7 @@ async function request_ram(ns, ram_needed, ram_request_handler, ram_provide_hand
  * @param {NetscriptPort} ram_request_handler 
  * @param {NetscriptPort} ram_provide_handler 
  */
-async function release_ram(ns, server_to_release_from, ram_amount, ram_request_handler, ram_provide_handler) {
+async function release_ram(ns, target, server_to_release_from, ram_amount, ram_request_handler, ram_provide_handler) {
   let ram_request = {
     "action"   : "release_ram",
     "server"   : server_to_release_from,
@@ -240,12 +186,15 @@ async function release_ram(ns, server_to_release_from, ram_amount, ram_request_h
     "requester": ns.pid
   }
 
+  ns.print("Awaiting space in RAM Request Handler to Release old RAM.")
   while(!ram_request_handler.tryWrite(JSON.stringify(ram_request))){
     await ns.sleep(50)
   }
+  ns.print("Finished Awaiting RAM Request Handler.")
 
   let awaiting_response = true
   let ram_response = {}
+  ns.print("Awaiting Response.")
   while (awaiting_response) {
     while(ram_provide_handler.empty()) {
       await ns.sleep(50)
@@ -259,9 +208,10 @@ async function release_ram(ns, server_to_release_from, ram_amount, ram_request_h
       await ns.sleep(50)
     }
   }
+  ns.print("Finished Awaiting Response.")
 
   if (!(ram_response.result === "OK")) {
-    ns.tprint("ERROR RAM Manager didn't let us release " + ram_amount + " RAM from " + server_to_release_from)
+    ns.tprint("ERROR Target: " + target + ". RAM Manager didn't let us release " + ram_amount + " RAM from " + server_to_release_from)
   }
 
   return Promise.resolve()
@@ -269,10 +219,14 @@ async function release_ram(ns, server_to_release_from, ram_amount, ram_request_h
 
 /** @param {NS} ns */
 export async function main(ns) {
+  const our_pid   = ns.pid
   const arg_flags = ns.flags([
     ["target",""]
   ])
-  ns.disableLog("sleep")
+  ns.disableLog("ALL")
+  ns.enableLog("exec")
+
+  ns.setTitle("Manage Server Hacking V2.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
 
   if (arg_flags.target == "") {
     ns.tprint("No Target Server specified for manage_server.js")
@@ -280,6 +234,7 @@ export async function main(ns) {
   }
 
   const CONTROL_PARAMETERS    = ns.getPortHandle(1)
+  const UPDATE_HANDLER        = ns.getPortHandle(4)
   const RAM_REQUEST_HANDLER   = ns.getPortHandle(5)
   const RAM_PROVIDE_HANDLER   = ns.getPortHandle(6)
   
@@ -292,8 +247,31 @@ export async function main(ns) {
   let batches_needed = 0
   let ram_needed = 0
 
+  let pre_exec = 0
+  let post_exec = 0
+
+  ns.atExit(function() {
+    let pid_array = []
+    for (let batch of batch_tracker) {
+      pid_array.push(batch[0],batch[3][0],batch[3][1],batch[3][2])
+    }
+    UPDATE_HANDLER.write(
+      JSON.stringify({
+        "action" : "death_react"
+       ,"death_react": {
+          "pids_to_kill" : pid_array
+        }
+      })
+    )
+    RAM_REQUEST_HANDLER.write(
+      JSON.stringify({
+        "action" : "death_react"
+       ,"pid" : our_pid
+      })
+    )
+  })
+
   while(true) {
-    let start = Date.now()
 
     ns.print("Updating Control Parameters")
     control_params = JSON.parse(CONTROL_PARAMETERS.peek())
@@ -322,6 +300,7 @@ export async function main(ns) {
       let batch_server       = next_batch[1]
       let batch_ram_use      = next_batch[2]
       // Wait for the batch to finish
+      ns.print("INFO Running more or exactly the number of Batches compared to Batches needed. Await Batch " + batch_pid_to_watch + " finishing.")
       while(ns.isRunning(batch_pid_to_watch)) {
         await ns.sleep(10)
       }
@@ -329,24 +308,26 @@ export async function main(ns) {
 
       if (batch_tracker.length >= batches_needed) {
         // Release the Ram of the batch that just finished.
-        await release_ram(batch_server, batch_ram_use, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+        ns.print("INFO Released RAM from a batch we no longer need. Awaiting RAM release.")
+        await release_ram(ns, arg_flags.target, batch_server, batch_ram_use, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
         launch_batch = false
-        ns.print("INFO Released RAM from a batch we no longer need.")
       }
       else if (batch_tracker.length < batches_needed) {
         // Launch a new batch with the server and RAM of the previous batch
         if (batch_ram_use > ram_needed) {
           // Release the difference between the two rams
-          await release_ram(batch_server, batch_ram_use - ram_needed, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+          ns.print("INFO Released some RAM from a batch we had previously and used the rest for the next iteration. Awaiting RAM release")
+          await release_ram(ns, arg_flags.target, batch_server, batch_ram_use - ram_needed, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
           // And use the remaining RAM in the new batch
           launch_batch = true
           server_to_use = batch_server
-          ns.print("INFO Released some RAM from a batch we had previously and used the rest for the next iteration.")
         }
         if (batch_ram_use < ram_needed) {
           // Release the RAM from the previous batch
-          await release_ram(batch_server, batch_ram_use, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+          ns.print("INFO Awaiting the Release of RAM from previous batch as we need more for this one.")
+          await release_ram(ns, arg_flags.target, batch_server, batch_ram_use, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
           // Request new RAM
+          ns.print("INFO Awaiting Request for more RAM")
           let response = await request_ram(ns, ram_needed, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
           if (response.result === "OK") {
             // And use the RAM in the new batch
@@ -369,6 +350,7 @@ export async function main(ns) {
     }
     else if (batch_tracker.length < batches_needed) {
       // Request new RAM
+      ns.print("INFO Awaiting Request of RAM for new batch.")
       let response = await request_ram(ns, ram_needed, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
       // And use the RAM in the new batch
       if (response.result === "OK") {
@@ -378,12 +360,36 @@ export async function main(ns) {
       }
       else {
         launch_batch = false
-        ns.print("WARN Failed to obtain RAM for a new batch.")
+        ns.print("WARN Failed to obtain RAM for a new batch. Batches Running: " + batch_tracker.length)
+
+        // Check if a batch that we launched earlier has died and we can launch another batch using its RAM
+        if (batch_tracker.length > 0) {
+          ns.print("INFO Check for possible finished batches to reuse.")
+          if (!ns.isRunning(parseInt(batch_tracker[0][0]))) {
+            ns.print("INFO Batch " + batch_tracker[0][0] + " finished and can be checked for reuse.")
+            let batch_to_use = batch_tracker.shift()
+            if (batch_to_use[2] = ram_needed) {
+              // A prior batch has died and has RAM we can reuse
+              launch_batch = true
+              server_to_use = batch_to_use[1]
+              ns.print("INFO Reused RAM from an already finished batch instead.")
+            }
+            else {
+              // A prior batch has died, but we can't reuse, so we release the RAM
+              ns.print("INFO Awaiting Release of RAM from an already finished batch.")
+              await release_ram(ns, arg_flags.target, batch_to_use[1], batch_to_use[2], RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+            }
+          }
+          else {
+            ns.print("INFO Batch " + batch_tracker[0][0] + " has not finished yet.")
+          }
+        }
       }
     }
 
     if (!(launch_batch === undefined)) {
       if (launch_batch) {
+        ns.print("Launching Scripts")
         let hack_args = [
           "--target" , arg_flags.target,
           "--addMsec", batch_info.batch_hack.addMsec,
@@ -404,11 +410,15 @@ export async function main(ns) {
           "--addMsec", batch_info.batch_weaken_grow.addMsec,
           "--threads", batch_info.batch_weaken_grow.threads
         ]
-
+        pre_exec = Date.now()
+        let await_time = (post_exec === undefined) ? control_params.hacker.hack_batch_time_interval : Math.max(control_params.hacker.hack_batch_time_interval - (pre_exec - post_exec), 100)
+        await ns.sleep(await_time)
+        ns.print("Execution time of loop: " + (pre_exec - post_exec) + " / " + await_time + " / " + control_params.hacker.hack_batch_time_interval)
         let hack_pid        = ns.exec("/scripts/util/hack_v2.js"  , server_to_use, batch_info.batch_hack.threads       , ...hack_args)
         let weaken_hack_pid = ns.exec("/scripts/util/weaken_v2.js", server_to_use, batch_info.batch_weaken_hack.threads, ...weaken_hack_args)
         let grow_pid        = ns.exec("/scripts/util/grow_v2.js"  , server_to_use, batch_info.batch_grow.threads       , ...grow_args)
         let weaken_grow_pid = ns.exec("/scripts/util/weaken_v2.js", server_to_use, batch_info.batch_weaken_grow.threads, ...weaken_grow_args)
+        post_exec = Date.now()
 
         if (
             hack_pid        === 0
@@ -427,7 +437,8 @@ export async function main(ns) {
           let new_batch = [
             weaken_grow_pid,
             server_to_use,
-            ram_needed
+            ram_needed,
+            [hack_pid, weaken_hack_pid, grow_pid]
           ]
           batch_tracker.push(new_batch)
           ns.print("Launched batch " + batch_tracker.length)
@@ -437,10 +448,5 @@ export async function main(ns) {
     else {
       ns.toast("Weird situation in server hack manager targetting " + arg_flags.target)
     }
-    let end = Date.now()
-
-    let await_time = Math.max(control_params.hacker.hack_batch_time_interval - (end - start), 100)
-    ns.print("Execution time of loop: " + (end - start) + " /" + await_time + " / " + control_params.hacker.hack_batch_time_interval)
-    await ns.sleep(await_time)
   }
 }

@@ -1,61 +1,116 @@
 /**
- * all_server_status is an object that will hold information about all servers we have root access to.
- * 
- * It will be exposed on Port 3 as a result of JSON.stringify(all_server_status)
- * 
- * all_server_status = {
- *  "n00dles" = {
- *    "max_money": ns.getServerMaxMoney(server),
- *    "current_money": ns.getServerMoneyAvailable(server),
- *    "max_ram": ns.getServerMaxRam(server),
- *    "free_ram": ns.getServerFree
- *    "min_difficulty": ns.getServerMinSecurityLevel(server),
- *    "current_difficulty": ns.getServerSecurityLevel(server),
- *    "actions": {
- *      <PID> = {
- *        "server": <hostname>,
- *        "target": <hostname>,
- *        "action": "hack" | "grow" | "weaken" | <script_name>
- *      },
- *      <PID> ...
- *    }
- *  }
- * }
- * 
+ * @param {NS} ns
+ * @param {number} ram_needed 
+ * @param {NetscriptPort} ram_request_handler 
+ * @param {NetscriptPort} ram_provide_handler 
  */
+async function request_ram(ns, ram_needed, ram_request_handler, ram_provide_handler) {
+  let ram_request = {
+    "action"   : "request_ram",
+    "amount"   : ram_needed,
+    "requester": ns.pid
+  }
+
+  ns.print("Awaiting space in RAM Request Handler to Request new RAM.")
+  while(!ram_request_handler.tryWrite(JSON.stringify(ram_request))){
+    await ns.sleep(50)
+  }
+  ns.print("Finished Awaiting RAM Request Handler.")
+
+  let awaiting_response = true
+  let ram_response = {}
+  ns.print("Awaiting Response.")
+  while (awaiting_response) {
+    while(ram_provide_handler.empty()) {
+      await ns.sleep(50)
+    }
+    ram_response = JSON.parse(ram_provide_handler.peek())
+    if (parseInt(ram_response.requester) === ns.pid) {
+      awaiting_response = false
+      ram_provide_handler.read()
+    }
+    else{
+      await ns.sleep(50)
+    }
+  }
+  ns.print("Finished Awaiting Response.")
+
+  if (!(ram_response.result === "OK")) {
+    return Promise.resolve({
+      "result": ram_response.result,
+      "reason": ram_response.failure_reason
+    })
+  }
+  else {
+    return Promise.resolve({
+      "result": ram_response.result,
+      "server": ram_response.server,
+      "amount": ram_response.amount
+    })
+  }
+}
 
 /**
- * Port 4 will be a queue of actions for this script to write to.
- * 
- * Data input to this Port should be of the following form converted to string via JSON.stringify
- * update = {
- *  "action": "update_info" | "request_action",
- *  "update_info": {
- *    "server": <hostname>,
- *    "current_money": <number>,
- *    "current_difficulty": <number>,
- *    "free_ram": <number>,
- *    "pid_to_remove": <number>,
- *  },
- *  "request_action": {
- *    "script_action": "hack" | "grow" | "weaken" | "manage"
- *    "target": <hostname>,
- *    "threads": <number>,
- *    "addMsec": <number>,
- *    "sec_inc": <number>,
- *  }
- * }
+ * @param {NS} ns
+ * @param {string} server_to_release_from 
+ * @param {number} ram_amount 
+ * @param {NetscriptPort} ram_request_handler 
+ * @param {NetscriptPort} ram_provide_handler 
  */
+async function release_ram(ns, server_to_release_from, ram_amount, ram_request_handler, ram_provide_handler) {
+  let ram_request = {
+    "action"   : "release_ram",
+    "server"   : server_to_release_from,
+    "amount"   : ram_amount,
+    "requester": ns.pid
+  }
+
+  ns.print("Awaiting space in RAM Request Handler to Release old RAM.")
+  while(!ram_request_handler.tryWrite(JSON.stringify(ram_request))){
+    await ns.sleep(50)
+  }
+  ns.print("Finished Awaiting RAM Request Handler.")
+
+  let awaiting_response = true
+  let ram_response = {}
+  ns.print("Awaiting Response.")
+  while (awaiting_response) {
+    while(ram_provide_handler.empty()) {
+      await ns.sleep(50)
+    }
+    ram_response = JSON.parse(ram_provide_handler.peek())
+    if (parseInt(ram_response.requester) === ns.pid) {
+      awaiting_response = false
+      ram_provide_handler.read()
+    }
+    else {
+      await ns.sleep(50)
+    }
+  }
+  ns.print("Finished Awaiting Response.")
+
+  if (!(ram_response.result === "OK")) {
+    ns.tprint("ERROR RAM Manager didn't let us release " + ram_amount + " RAM from " + server_to_release_from)
+  }
+
+  return Promise.resolve()
+}
 
 /** @param {NS} ns */
 export async function main(ns) {
+  const our_pid   = ns.pid
   const arg_flags = ns.flags([
     ["target",""]
   ])
   const SERVER_INFO_HANDLER = ns.getPortHandle(3)
-  const UPDATE_HANDLER = ns.getPortHandle(4)
+  const UPDATE_HANDLER      = ns.getPortHandle(4)
+  const RAM_REQUEST_HANDLER = ns.getPortHandle(5)
+  const RAM_PROVIDE_HANDLER = ns.getPortHandle(6)
 
-  ns.disableLog("sleep")
+  ns.disableLog("ALL")
+  ns.enableLog("exec")
+
+  ns.setTitle("Manage Server Preparation V2.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
 
   if (arg_flags.target == "") {
     ns.tprint("No Target Server specified for manage_server.js")
@@ -79,171 +134,341 @@ export async function main(ns) {
     server_info = JSON.parse(SERVER_INFO_HANDLER.peek())
     analysing = true
 
+    ns.print(
+      "Curr Diff: " + ns.getServerSecurityLevel(target_server) + "\n"
+    + "Min Diff : " + server_info[target_server].min_diff + "\n"
+    + "Curr Mon : " + ns.getServerMoneyAvailable(target_server) + "\n"
+    + "Max Mon  : " + server_info[target_server].max_money
+    )
     if (
-        ns.getServerSecurityLevel(target_server) > server_info[target_server].min_difficulty
+        ns.getServerSecurityLevel(target_server) > server_info[target_server].min_diff
     ) {
       ns.print("Preparing Weaken Threads")
       // Prep weaken executions
       let num_threads = 0
-      let decrease_needed = ns.getServerSecurityLevel(target_server) - server_info[target_server].min_difficulty
+      let decrease_needed = ns.getServerSecurityLevel(target_server) - server_info[target_server].min_diff
+      num_threads = Math.floor(decrease_needed / ns.weakenAnalyze(1))
       let decrease_expected = 0
       while(analysing) {
-        num_threads += 1
         decrease_expected = ns.weakenAnalyze(num_threads)
         if (decrease_expected >= decrease_needed) {
           analysing = false
         }
+        num_threads += 1
       }
-      // let update = {
-      //   "action": "request_action",
-      //   "request_action": {
-      //     "script_action": "weaken",
-      //     "target": arg_flags.target,
-      //     "threads": num_threads,
-      //     "addMsec": 0
-      //   }
-      // }
-      // while(!UPDATE_HANDLER.tryWrite(JSON.stringify(update))) {
-      //   await ns.sleep(1000)
-      // }
+      
+      let weaken_scripts = []
+      let threads_launched = 0
+      let threads_remaining  = num_threads
+      let threads_attempting = num_threads
+      let ram_needed = 0
+      for (let i = 0; i < threads_attempting; i++) {
+        ram_needed = ram_needed + 1.75
+      }
+
+      ns.atExit(function() {
+        let pid_array = []
+        for (let info of weaken_scripts) {
+          pid_array.push(info[0])
+        }
+        UPDATE_HANDLER.write(
+          JSON.stringify({
+            "action" : "death_react"
+           ,"death_react": {
+              "pids_to_kill" : pid_array
+            }
+          })
+        )
+        RAM_REQUEST_HANDLER.write(
+          JSON.stringify({
+            "action" : "death_react"
+           ,"pid" : our_pid
+          })
+        )
+      })
+
+      let attempted_single_thread = false
+      while (threads_remaining > 0) {
+        // If we were unable to launch all threads neeeded but we have running threads ...
+        if (
+            attempted_single_thread
+        &&  weaken_scripts.length > 0
+        ) {
+          ns.print("INFO Attempted Single Threads with Scripts running...")
+          // ... Wait for the batches to finish, release their RAM and then attempt to start the remaining threads.
+          while(weaken_scripts.length > 0) {
+            ns.print("INFO Await death of script.")
+            let script_info = weaken_scripts.shift()
+            while(ns.isRunning(script_info[0])) {
+              await ns.sleep(10)
+            }
+            ns.print("INFO Awaiting release of RAM from dead script.")
+            await release_ram(ns, script_info[1], script_info[2], RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+          }
+          threads_attempting = threads_remaining
+          ram_needed = 0
+          for (let i = 0; i < threads_attempting; i++) {
+            ram_needed = ram_needed + 1.75
+          }
+          attempted_single_thread = false
+        }
+
+        ns.print("INFO Awaiting Request of RAM for new weaken script")
+        let response = await request_ram(ns, ram_needed, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+        if (response.result === "OK") {
+          // And use the RAM in the new batch
+          ns.print("INFO Obtained RAM for " + threads_attempting + " weaken threads, launching weaken script.")
+          let weaken_args = [
+            "--target" , arg_flags.target,
+            "--threads", threads_attempting,
+            "--addMsec", 0
+          ]
+          let weaken_pid = ns.exec("/scripts/util/weaken_v2.js", response.server, threads_attempting, ...weaken_args)
+          if (!(weaken_pid === 0)) {
+            threads_launched += threads_attempting
+            threads_remaining -= threads_attempting
+            let weaken_script = [
+              weaken_pid,
+              response.server,
+              ram_needed
+            ]
+            weaken_scripts.push(weaken_script)
+          }
+        }
+        else {
+          ns.print("WARN Failed to obtain RAM for " + threads_attempting + " weaken threads, reducing number of threads requested.")
+          if (threads_attempting > 1) {
+            threads_attempting = Math.floor(threads_attempting / 2)
+          }
+          else {
+            attempted_single_thread = true
+          }
+          ram_needed = 0
+          for (let i = 0; i < threads_attempting; i++) {
+            ram_needed = ram_needed + 1.75
+          }
+        }
+        await ns.sleep(10)
+      }
+      let all_released = false
+      ns.print("INFO Awaiting Release of all Weaken Scripts now we've executed all necessary threads.")
+      while(!all_released) {
+        if (weaken_scripts.length > 0) {
+          // Weaken Scripts not finished releasing
+          let script_info = weaken_scripts.shift()
+          while(ns.isRunning(script_info[0])) {
+            await ns.sleep(10)
+          }
+          ns.print("INFO Awaiting release of RAM from a now dead weaken script.")
+          await release_ram(ns, script_info[1], script_info[2], RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+        }
+        else {
+          all_released = true
+        }
+        await ns.sleep(10)
+      }
     }
     else if (
         server_info[target_server].max_money > ns.getServerMoneyAvailable(target_server)
     ) {
-      ns.print("Preparing Grow Batch")
+      ns.print("Preparing Grow Batchs")
       // Prep grow executions
-      let total_num_threads = 0
-      let num_threads = 0
       let multiplier_needed = server_info[target_server].max_money / ns.getServerMoneyAvailable(target_server)
-      total_num_threads = Math.ceil(ns.growthAnalyze(arg_flags.target,multiplier_needed))
+      let grow_threads = Math.ceil(ns.growthAnalyze(arg_flags.target,multiplier_needed))
       
-      let single_weaken = ns.weakenAnalyze(2)
-      let grow_sec_inc = ns.growthAnalyzeSecurity(2, arg_flags.target)
-      num_threads = Math.min(total_num_threads, Math.floor(single_weaken / grow_sec_inc) * 2)
-      grow_sec_inc = ns.growthAnalyzeSecurity(num_threads, arg_flags.target)
-
       let grow_time = ns.getGrowTime(arg_flags.target)
       let weaken_time = ns.getWeakenTime(arg_flags.target)
-      let weaken_grow_delay = 0
+      let weaken_delay = 0
       let grow_delay = (weaken_time - grow_time) - 50
 
-      let min_ram_needed = 
-        1.75 * 2 // Weaken RAM
-      + 1.75 * num_threads // Grow RAM
+      let weaken_server
+      let grow_server
+      let weaken_ram = 0
+      let grow_ram   = 0
+      let weaken_threads
+      
+      let grow_scripts = []
+      let threads_launched = 0
+      let threads_remaining  = grow_threads
+      let threads_attempting = grow_threads
 
-      let proceed_with_batch_grow = false
-      for (let server in server_info) {
-        if (
-          server_info[server].free_ram >= min_ram_needed
+      ns.atExit(function() {
+        let pid_array = []
+        for (let info of grow_scripts) {
+          pid_array.push(info[0],info[3])
+        }
+        UPDATE_HANDLER.write(
+          JSON.stringify({
+            "action" : "death_react"
+           ,"death_react": {
+              "pids_to_kill" : pid_array
+            }
+          })
+        )
+        RAM_REQUEST_HANDLER.write(
+          JSON.stringify({
+            "action" : "death_react"
+           ,"pid" : our_pid
+          })
+        )
+      })
+
+      let attempted_single_thread = false
+      while (threads_remaining > 0) {
+        weaken_server = undefined
+        grow_server   = undefined
+        while (
+            (   (weaken_server === undefined)
+            ||  (grow_server   === undefined))
+        &&  !attempted_single_thread
         ) {
-          proceed_with_batch_grow = true
-          break
+          weaken_server = undefined
+          grow_server   = undefined
+          weaken_threads = 0
+          let decrease_expected
+          let analysing = true
+          while(analysing) {
+            weaken_threads += 1
+            decrease_expected = ns.weakenAnalyze(weaken_threads)
+            if (decrease_expected >= (0.004 * threads_attempting)) {
+              analysing = false
+            }
+          }
+          ns.print("Checking for " + threads_attempting + " threads of grow, " + weaken_threads + " of weaken.")
+  
+          weaken_ram = 0 // Weaken RAM
+          for (let i = 0; i < weaken_threads; i++) {
+            weaken_ram = weaken_ram + 1.75
+          }
+          grow_ram = 0 // Grow RAM
+          for (let i = 0; i < threads_attempting; i++) {
+            grow_ram = grow_ram + 1.75
+          }
+  
+          ns.print("INFO Asking for " + (weaken_ram + grow_ram) + " RAM.")
+          let total_response = await request_ram(ns, weaken_ram + grow_ram, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+          if(total_response.result === "OK") {
+            ns.print("INFO Received RAM on " + total_response.server + ".")
+            weaken_server = total_response.server
+            grow_server   = total_response.server
+          }
+          else {
+            ns.print("INFO Awaiting RAM for grow scripts.")
+            let grow_response   = await request_ram(ns, grow_ram  , RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+            ns.print("INFO Awaiting RAM for weaken scripts.")
+            let weaken_response = await request_ram(ns, weaken_ram, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+            if (
+                grow_response.result === "OK"
+            &&  weaken_response.result === "OK"
+            ) {
+              ns.print("INFO Received RAM on " + weaken_response.server + " and " + grow_response.server + ".")
+              weaken_server = weaken_response.server
+              grow_server   = grow_response.server
+            }
+            else {
+              ns.print("WARN Did not get any RAM.")
+              ns.print("INFO Awaiting Release of grow script RAM.")
+              if (grow_response.result === "OK") await release_ram(ns, grow_response.server, grow_response.amount, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+              ns.print("INFO Awaiting Release of weaken script RAM.")
+              if (weaken_response.result === "OK") await release_ram(ns, weaken_response.server, weaken_response.amount, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+              if (threads_attempting > 1) {
+                threads_attempting = Math.floor(threads_attempting / 2)
+              }
+              else{
+                attempted_single_thread = true
+              }
+            }
+          }
+        }
+
+        // We could not find RAM for a single grow thread (+ weaken) and there are scripts already running.
+        if (
+            attempted_single_thread
+        &&  grow_scripts.length > 0
+        ) {
+          // Await the running batchs finishing and Release their RAM
+          while (grow_scripts.length > 0) {
+            ns.print("INFO Await death of script.")
+            let script_info = grow_scripts.shift()
+            while(ns.isRunning(script_info[0])) {
+              await ns.sleep(10)
+            }
+            ns.print("INFO Awaiting release of RAM from dead script.")
+            // Release Weaken Scripts RAM
+            await release_ram(ns, script_info[1], script_info[2], RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+            // Release Grow Scripts RAM
+            await release_ram(ns, script_info[4], script_info[5], RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+          }
+          threads_attempting = threads_remaining
+          attempted_single_thread = false
+        }
+  
+        if (
+            threads_attempting > 0 
+        &&  !(weaken_server === undefined)
+        &&  !(grow_server   === undefined)
+        ) {
+          ns.print("INFO We have RAM for both Grow and Weaken threads.")
+          let grow_args = [
+            "--target" , arg_flags.target,
+            "--threads", threads_attempting,
+            "--addMsec", grow_delay
+          ]
+          let weaken_args = [
+            "--target" , arg_flags.target,
+            "--threads", weaken_threads,
+            "--addMsec", weaken_delay
+          ]
+          let grow_pid   = ns.exec("/scripts/util/grow_v2.js"  , grow_server  , threads_attempting, ...grow_args  )
+          let weaken_pid = ns.exec("/scripts/util/weaken_v2.js", weaken_server, weaken_threads    , ...weaken_args)
+  
+          if (
+              grow_pid   === 0
+          ||  weaken_pid === 0
+          ) {
+            if (!(grow_pid   === 0)) ns.kill(grow_pid)
+            if (!(weaken_pid === 0)) ns.kill(weaken_pid)
+            ns.print("Had to kill batch grow processes due to missing pid for " + arg_flags.target)
+            ns.toast("Had to kill batch grow processes due to missing pid for " + arg_flags.target, "warning")
+            await release_ram(ns, grow_server  , grow_ram  , RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+            await release_ram(ns, weaken_server, weaken_ram, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+          }
+          else {
+            ns.print("INFO Record Grow and Weaken scripts we launched")
+            threads_launched += threads_attempting
+            threads_remaining -= threads_attempting
+            let batch_info = [
+              weaken_pid,
+              weaken_server,
+              weaken_ram,
+              grow_pid,
+              grow_server,
+              grow_ram
+            ]
+            grow_scripts.push(batch_info)
+            grow_server = undefined
+            weaken_server = undefined
+          }
         }
       }
-
-      if (proceed_with_batch_grow) {
-        ns.print("Multiplier Needed: " + multiplier_needed + ", # Threads Needed: " + total_num_threads + ", # Threads/Batch: " + num_threads)
-        // let update_2 = {
-        //   "action": "request_action",
-        //   "request_action": {
-        //     "script_action": "batch_grow",
-        //     "target": arg_flags.target,
-        //     "batches_needed": Math.ceil(total_num_threads / num_threads),
-        //     "batch_grow": {
-        //       "threads": num_threads,
-        //       "addMsec": grow_delay,
-        //       "sec_inc": grow_sec_inc
-        //     },
-        //     "weaken_grow": {
-        //       "threads": 2,
-        //       "addMsec": weaken_grow_delay
-        //     }
-        //   }
-        // }
-        // ns.print("Preparing request")
-        // ns.print(JSON.stringify(update_2))
-        // while(!UPDATE_HANDLER.tryWrite(JSON.stringify(update_2))) {
-        //   await ns.sleep(1000)
-        // }
-      }
-      else {
-        let grow_sec_inc = ns.growthAnalyzeSecurity(1, arg_flags.target)
-        // let update_2_alt = {
-        //   "action": "request_action",
-        //   "request_action": {
-        //     "script_action": "grow",
-        //     "target": arg_flags.target,
-        //     "addMsec": 0,
-        //     "threads": 1,
-        //     "sec_inc": grow_sec_inc
-        //   }
-        // }
-        // ns.print("Preparing request")
-        // ns.print(JSON.stringify(update_2_alt))
-        // while(!UPDATE_HANDLER.tryWrite(JSON.stringify(update_2_alt))) {
-        //   await ns.sleep(1000)
-        // }
+      // Await the running batchs finishing and Release their RAM
+      while (grow_scripts.length > 0) {
+        ns.print("INFO Await death of script.")
+        let script_info = grow_scripts.shift()
+        while(ns.isRunning(script_info[0])) {
+          await ns.sleep(10)
+        }
+        ns.print("INFO Awaiting release of RAM from dead script.")
+        // Release Weaken Scripts RAM
+        await release_ram(ns, script_info[1], script_info[2], RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+        // Release Grow Scripts RAM
+        await release_ram(ns, script_info[4], script_info[5], RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
       }
     }
     else {
       ns.print("Ready for Hack Batching")
       started_hack_batching = true
     }
-
-    ns.print("Give some time for threads to be executed")
-    await ns.sleep(1000)
-
-    // Check each second to see if all threads of "hack", "grow" and "weaken" targeting the target server have ended.
-    let await_thread_end = true
-    ns.print("Weaken Time: " + ns.getWeakenTime(arg_flags.target))
-    let all_server_info = {}
-    let sleep_delay = 1000
-    while(await_thread_end){
-      await_thread_end = false
-      ns.print("Sleep for " + sleep_delay)
-      await ns.sleep(sleep_delay)
-      ns.print("Check if threads are still running")
-      all_server_info = JSON.parse(SERVER_INFO_HANDLER.peek())
-      for (let key in all_server_info) {
-        //ns.print("Check server " + key)
-        for (let action in all_server_info[key].actions) {
-          //ns.print("Action " + action + " is " + all_server_info[key].actions[action].action + " on " + all_server_info[key].actions[action].target)
-          if (
-              all_server_info[key].actions[action].target == arg_flags.target
-          &&  (     all_server_info[key].actions[action].action == "weaken"
-                ||  all_server_info[key].actions[action].action == "grow"
-              )
-          ) {
-            ns.print("Threads are still performing " + all_server_info[key].actions[action].action +  " against " + arg_flags.target + " on " + key)
-            switch (all_server_info[key].actions[action].action) {
-              case "weaken":
-                sleep_delay = Math.floor(ns.getWeakenTime(arg_flags.target) / 10)
-                break
-              case "grow":
-                sleep_delay = Math.floor(ns.getGrowTime(arg_flags.target) / 10)
-                break
-            }
-            await_thread_end = true
-            break
-          }
-        }
-      }
-    }
+    await ns.sleep(10)
   }
-
-  // let update_message = {
-  //   "action": "update_info",
-  //   "update_info": {
-  //     "server": "home",
-  //     "freed_ram": 4.9 * arg_flags.threads,
-  //     "pid_to_remove": ns.pid
-  //   }
-  // }
-
-  // while(UPDATE_HANDLER.full()) {
-  //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-  // }
-  // while (!UPDATE_HANDLER.tryWrite(JSON.stringify(update_message))){
-  //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-  // }
 }

@@ -21,7 +21,7 @@ const RAM_INFO = {
 /**
  * all_server_stats is an object that will hold static or binary information about all servers.
  * 
- * It will be exposed on Port 3 as a result of JSON.stringify(all_server_status)
+ * It will be exposed on Port 3 as a result of JSON.stringify(all_server_stats)
  * 
  * all_server_stats = {
  *  "n00dles" = {
@@ -35,7 +35,7 @@ const RAM_INFO = {
  * }
  * 
  */
-let all_server_status = {}
+let all_server_stats = {}
 
 /**
  * Port 4 will be a queue of actions for this script to perform.
@@ -87,7 +87,7 @@ function kill_all_other_processes(ns) {
  * @param {boolean} defer_write - Optional, pass true if the calling function will use the handler itself to write to the port
  */
 function update_server_stats(ns, server, handler = undefined, defer_write = false) {
-  all_server_status[server] = {
+  all_server_stats[server] = {
     "max_money"     : ns.getServerMaxMoney(server),
     "max_ram"       : ns.getServerMaxRam(server),
     "min_diff"      : ns.getServerMinSecurityLevel(server),
@@ -100,7 +100,7 @@ function update_server_stats(ns, server, handler = undefined, defer_write = fals
   &&  !(handler === undefined)
   ) {
     handler.clear()
-    handler.write(JSON.stringify(all_server_status))
+    handler.write(JSON.stringify(all_server_stats))
   }
 }
 
@@ -111,14 +111,14 @@ function update_server_stats(ns, server, handler = undefined, defer_write = fals
  * @param {NetscriptPort} handler - Handler that will handle the port writing
  */
 function populate_all_server_stats(ns, handler) {
-  let all_servers = scan_for_servers(ns,{"include_home":true})
+  let all_servers = scan_for_servers(ns,{"is_rooted":true,"include_home":true})
 
   for (let server of all_servers) {
     update_server_stats(ns, server, null, true)
   }
 
   handler.clear()
-  handler.write(JSON.stringify(all_server_status))
+  handler.write(JSON.stringify(all_server_stats))
 }
 
 /**
@@ -397,12 +397,18 @@ export async function main(ns) {
 
   disable_logs(ns)
 
+  ns.setTitle("Control Servers V3.0 - PID: " + ns.pid)
+
   CONTROL_PARAM_HANDLER.clear()
   BITNODE_MULTS_HANDLER.clear()
   SERVER_INFO_HANDLER.clear()
   UPDATE_HANDLER.clear()
   RAM_REQUEST_HANDLER.clear()
   RAM_PROVIDE_HANDLER.clear()
+
+  // Clear the slate
+  ns.print("Killing all other processes")
+  kill_all_other_processes(ns)
 
   while (!CONTROL_PARAM_HANDLER.empty()) {
     CONTROL_PARAM_HANDLER.clear()
@@ -429,22 +435,20 @@ export async function main(ns) {
     await ns.sleep(50)
   }
 
-  // Clear the slate
-  kill_all_other_processes(ns)
-
-  // Gather Statistics of the environment we are working in
+  ns.print("Gather Statistics of the environment we are working in.")
   populate_all_server_stats(ns, SERVER_INFO_HANDLER)
 
-  // Ensure our control parameters are written to their ports
+  ns.print("Ensure our control parameters are written to their ports.")
   await populate_control_and_bitnode_stats(ns, CONTROL_PARAM_HANDLER, BITNODE_MULTS_HANDLER)
 
-  // Start the RAM manager
+  ns.print("Start the RAM manager.")
   await start_ram_manager(ns, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
 
-  // Start our other managers
+  ns.print("Start our other managers.")
   await start_managers(ns, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
 
   ns.print("Starting Loop")
+  let prior_time = Date.now()
   while(true){
     let update_string = UPDATE_HANDLER.peek()
     //ns.print("Update String at start of loop: " + update_string)
@@ -452,6 +456,12 @@ export async function main(ns) {
       await ns.sleep(50)
       update_string = UPDATE_HANDLER.peek()
       //ns.print("Await ended: String: " + update_string + " Is Empty: " + UPDATE_HANDLER.empty())
+    }
+
+    //
+    if ((Date.now() - prior_time) > 10000) {
+      await populate_control_and_bitnode_stats(ns, CONTROL_PARAM_HANDLER, BITNODE_MULTS_HANDLER)
+      prior_time = Date.now()
     }
 
     // Look at the top of the queue
@@ -507,712 +517,19 @@ export async function main(ns) {
       if (filename === "") {
         ns.tprint("ERROR Action '" + update.request_action.script_action + "' requested, but not known.")
       }
-
-      if (!child_is_running(ns, filename)) {
+      else if (!child_is_running(ns, filename)) {
         await launch_child(ns, filename, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
-      }      
+      }  
+    }
+    else if (update.action === "death_react") {
+      ns.print("Performing Death Reaction")
+      /** @type {number[]} */
+      let pid_array = update.death_react.pids_to_kill
+      ns.print("Killing the following PIDs: " + pid_array)
 
-      // if (all_server_status[server_to_target]) {
-      //   ns.print("Performing " + request_action.script_action)
-        
-
-      //   if (
-      //       request_action.script_action == "hack"
-      //   ||  request_action.script_action == "grow"
-      //   //||  request_action.script_action == "weaken"
-      //   ) {
-      //     let script_args = [
-      //       "--target", server_to_target,
-      //       "--addMsec", request_action.addMsec,
-      //       "--threads", request_action.threads
-      //     ]
-      //     switch (request_action.script_action) {
-      //       case "hack":
-      //         ram_needed = 1.7 * request_action.threads
-      //         filename = "scripts/hack.js"
-      //         break
-      //       case "grow":
-      //         ram_needed = 1.75 * request_action.threads
-      //         filename = "scripts/grow.js"
-      //         break
-      //       case "weaken":
-      //         ram_needed = 1.75 * request_action.threads
-      //         filename = "scripts/weaken.js"
-      //         break
-      //     }
-      //     let script_pid = 0
-      //     for(let server in all_server_status) {
-      //       if (
-      //           (     all_server_status[server].free_ram >= ram_needed
-      //             &&  server != "home"
-      //           )
-      //       ||  (     (all_server_status[server].free_ram - 16) >= ram_needed
-      //             &&  server == "home"
-      //           )
-      //       ) {
-      //         script_args.push("--server")
-      //         script_args.push(server)
-      //         if (request_action.script_action == "grow") {
-      //           script_args.push("--sec_inc")
-      //           script_args.push(request_action.sec_inc)
-      //         }
-      //         //ns.tprint(script_args)
-      //         script_pid = ns.exec(filename,server,request_action.threads,...script_args)
-      //         if (script_pid != 0) {
-      //           all_server_status[server].free_ram = all_server_status[server].free_ram - ram_needed
-      //           all_server_status[server].actions[script_pid] = {
-      //             "server": server,
-      //             "target": server_to_target,
-      //             "action": request_action.script_action,
-      //             "threads": request_action.threads
-      //           }
-      //         }
-      //         SERVER_INFO_HANDLER.clear()
-      //         SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //         break
-      //       }
-      //     }
-      //     if (script_pid == 0) {
-      //       ns.toast("Action failed to be processed: " + request_action.script_action + " on " + server_to_target, "warning", 5000)
-      //     }
-      //   }
-      //   else if (request_action.script_action == "weaken") {
-      //     let threads_launched = 0
-      //     let threads_remaining = request_action.threads
-      //     let threads_attempting = request_action.threads
-      //     let ram_needed = 1.75 * threads_attempting
-      //     let already_checked_one_thread = false
-      //     while (threads_remaining > 0) {
-      //       ns.print(
-      //         "Target: " + server_to_target
-      //       + ". Th-Re: " + threads_remaining
-      //       + ". Th-La: " + threads_launched
-      //       + ". Th-At: " + threads_attempting
-      //       + ". RAM: " + ram_needed
-      //       )
-      //       for (let server in all_server_status) {
-      //         let script_args = [
-      //           "--target", server_to_target,
-      //           "--addMsec", request_action.addMsec,
-      //           //"--threads", request_action.threads
-      //         ]
-      //         let script_pid = 0
-      //         if (
-      //             (     all_server_status[server].free_ram >= ram_needed
-      //               &&  server != "home"
-      //             )
-      //         ||  (     (all_server_status[server].free_ram - 16) >= ram_needed
-      //               &&  server == "home"
-      //             )
-      //         ) {
-      //           script_args.push("--threads",threads_attempting)
-      //           script_args.push("--server",server)
-      //           script_pid = ns.exec("scripts/weaken.js", server, threads_attempting,...script_args)
-      //           if (script_pid != 0){
-      //             ns.print("Launched process " + script_pid + " on " + server)
-      //             all_server_status[server].free_ram = all_server_status[server].free_ram - ram_needed
-      //             all_server_status[server].actions[script_pid] = {
-      //               "server": server,
-      //               "target": server_to_target,
-      //               "action": request_action.script_action,
-      //               "threads": threads_attempting
-      //             }
-      //             threads_launched += threads_attempting
-      //             threads_remaining -= threads_attempting
-      //           }
-      //           else {
-      //             ns.print("Attempted to launch and failed?")
-      //           }
-      //           ns.print(
-      //             "Target: " + server_to_target
-      //           + ". Th-Re: " + threads_remaining
-      //           + ". Th-La: " + threads_launched
-      //           + ". Th-At: " + threads_attempting
-      //           + ". RAM: " + ram_needed
-      //           )
-      //         }
-              
-      //         if (threads_launched >= request_action.threads) {
-      //           if(threads_launched > request_action.threads) {
-      //             ns.toast("Somehow managed to launch more weaken threads than requested", "warning")
-      //           }
-      //           break
-      //         }
-      //       }
-      //       // If we're only checking for a single thread, and we've already checked for a single thread
-      //       // previously, we've run out of RAM space to fit threads into
-      //       if (threads_attempting == 1) {
-      //         if (already_checked_one_thread) {
-      //           break;
-      //         }
-      //         else {
-      //           already_checked_one_thread = true
-      //         }
-      //       }
-      //       threads_attempting = Math.min(threads_remaining, Math.ceil(threads_attempting/2))
-      //       ram_needed = 1.75 * threads_attempting
-      //       //await ns.sleep(200)
-      //     }
-
-      //   }
-      //   // Action a batch grow request
-      //   else if (request_action.script_action == "batch_grow") {
-      //     // Example Batch Grow request format
-      //     // let update_2 = {
-      //     //   "action": "request_action",
-      //     //   "request_action": {
-      //     //     "script_action": "batch_grow",
-      //     //     "target": arg_flags.target,
-      //     //     "batches_needed": Math.ceil(total_num_threads / num_threads),
-      //     //     "grow": {
-      //     //       "threads": num_threads,
-      //     //       "addMsec": grow_delay,
-      //     //       "sec_inc": grow_sec_inc
-      //     //     },
-      //     //     "weaken_grow": {
-      //     //       "threads": 2,
-      //     //       "addMsec": weaken_grow_delay
-      //     //     }
-      //     //   }
-      //     // }
-
-      //     let batches_launched = 0
-      //     let batches_remaining = request_action.batches_needed
-      //     let batches_attempting = request_action.batches_needed
-      //     let single_batch_ram = 
-      //       1.75 * request_action.weaken_grow.threads // Weaken RAM
-      //     + 1.75 * request_action.batch_grow.threads // Grow RAM
-      //     let ram_needed = single_batch_ram * batches_attempting
-      //     let already_checked_one_batch = false
-
-      //     while (batches_remaining > 0) {
-      //       ns.print(
-      //         "Target: " + server_to_target
-      //       + ". Ba-Re: " + batches_remaining
-      //       + ". Ba-La: " + batches_launched
-      //       + ". Ba-At: " + batches_attempting
-      //       + ". RAM: " + ram_needed
-      //       )
-
-      //       // Search all servers for free ram
-      //       for (let server in all_server_status) {
-      //         let grow_script_args = [
-      //           "--target", server_to_target,
-      //           "--addMsec", request_action.batch_grow.addMsec
-      //         ]
-      //         let weaken_script_args = [
-      //           "--target", server_to_target,
-      //           "--addMsec", request_action.weaken_grow.addMsec
-      //         ]
-      //         let grow_script_pid = 0
-      //         let weaken_script_pid = 0
-              
-      //         // Does this server have enough free ram to satisfy the current ram needed?
-      //         if (
-      //             (     all_server_status[server].free_ram >= ram_needed
-      //               &&  server != "home"
-      //             )
-      //         ||  (     (all_server_status[server].free_ram - 16) >= ram_needed
-      //               &&  server == "home"
-      //             )
-      //         ) {
-      //           grow_script_args.push(
-      //             "--server", server,
-      //             "--threads", batches_attempting * request_action.batch_grow.threads,
-      //             "--sec_inc", batches_attempting * request_action.batch_grow.sec_inc
-      //           )
-      //           weaken_script_args.push(
-      //             "--server", server,
-      //             "--threads", batches_attempting * request_action.weaken_grow.threads
-      //           )
-      //           grow_script_pid = ns.exec("scripts/grow.js", server, batches_attempting * request_action.batch_grow.threads,...grow_script_args)
-      //           weaken_script_pid = ns.exec("scripts/weaken.js", server, batches_attempting * request_action.weaken_grow.threads,...weaken_script_args)
-
-      //           // Check we launched both expected processes
-      //           if (
-      //               grow_script_pid == 0
-      //           ||  weaken_script_pid == 0
-      //           ) {
-      //             ns.print("Had to kill batch grow processes due to missing pid")
-      //             ns.toast("Had to kill batch grow processes due to missing pid", "warning")
-      //             ns.kill(grow_script_pid)
-      //             ns.kill(weaken_script_pid)
-
-      //             // Something about the server we attempted to use is not reflected in the state we maintain.
-      //             all_server_status[server].free_ram = ns.getServerMaxRam(server) - ns.getServerUsedRam(server)
-      //             SERVER_INFO_HANDLER.clear()
-      //             SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //           }
-      //           else {
-      //             batches_launched += batches_attempting
-      //             batches_remaining -= batches_attempting
-      //             all_server_status[server].free_ram = all_server_status[server].free_ram - ram_needed
-      //             all_server_status[server].actions[grow_script_pid] = {
-      //               "server": server,
-      //               "target": server_to_target,
-      //               "action": "grow",
-      //               "threads": batches_attempting * request_action.batch_grow.threads
-      //             }
-      //             all_server_status[server].actions[weaken_script_pid] = {
-      //               "server": server,
-      //               "target": server_to_target,
-      //               "action": "weaken",
-      //               "threads": batches_attempting * request_action.weaken_grow.threads
-      //             }
-      //             SERVER_INFO_HANDLER.clear()
-      //             SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //             batches_attempting = Math.min(batches_attempting,batches_remaining)
-      //           }
-      //           ns.print(
-      //             "Target: " + server_to_target
-      //           + ". Ba-Re: " + batches_remaining
-      //           + ". Ba-La: " + batches_launched
-      //           + ". Ba-At: " + batches_attempting
-      //           + ". RAM: " + ram_needed
-      //           )
-      //         }
-              
-      //         if (batches_launched >= request_action.batches_needed) {
-      //           if(batches_launched > request_action.batches_needed) {
-      //             ns.toast("Somehow managed to launch more batch grow batches than requested for " + server_to_target, "warning")
-      //             //await ns.sleep(60000)
-      //           }
-      //           break
-      //         }
-      //       }
-
-      //       // If we're only checking for a single batch, and we've already checked for a single batch
-      //       // previously, we've run out of RAM space to fit batches into
-      //       if (batches_attempting == 1) {
-      //         if (already_checked_one_batch) {
-      //           break;
-      //         }
-      //         else {
-      //           already_checked_one_batch = true
-      //         }
-      //       }
-            
-      //       // Either we have launched all necessary batches or we need
-      //       // to reduce the number of batches we're attempting in one go
-      //       batches_attempting = Math.min(batches_remaining, Math.ceil(batches_attempting/2))
-      //       ram_needed = single_batch_ram * batches_attempting
-      //       await ns.sleep(50)
-      //     }
-      //   }
-      //   // Action a batch hack request
-      //   else if (request_action.script_action == "batch_hack") {
-      //     // Example Batch Hack request format
-      //     // let update_3 = {
-      //     //   "action": "request_action",
-      //     //   "request_action": {
-      //     //     "script_action": "batch_hack",
-      //     //     "target": arg_flags.target,
-      //     //     "batch_hack": {
-      //     //       "threads": 1,
-      //     //       "addMsec": hack_delay
-      //     //     },
-      //     //     "weaken_hack": {
-      //     //       "threads": weaken_threads_for_hack,
-      //     //       "addMsec": weaken_hack_delay 
-      //     //     },
-      //     //     "batch_grow": {
-      //     //       "threads": grow_threads,
-      //     //       "addMsec": grow_delay,
-      //     //       "sec_inc": grow_sec_inc
-      //     //     },
-      //     //     "weaken_grow": {
-      //     //       "threads": weaken_threads_for_growth,
-      //     //       "addMsec": weaken_grow_delay
-      //     //     }
-      //     //   }
-      //     // }
-
-      //     let batch_server
-      //     let ram_needed = 
-      //       1.7 * request_action.batch_hack.threads // Hack RAM
-      //     + 1.75 * (request_action.weaken_hack.threads + request_action.weaken_grow.threads) // Weaken RAM
-      //     + 1.75 * request_action.batch_grow.threads // Grow RAM
-          
-      //     for(let server in all_server_status) {
-      //       if (
-      //           (     all_server_status[server].free_ram >= ram_needed
-      //             &&  server != "home"
-      //           )
-      //       ||  (     (all_server_status[server].free_ram - 16) >= ram_needed
-      //             &&  server == "home"
-      //           )
-      //       ) {
-      //         batch_server = server
-      //         break
-      //       }
-      //     }
-      //     if (batch_server) {
-      //       let hack_script_args = [
-      //         "--target", server_to_target,
-      //         "--addMsec", request_action.batch_hack.addMsec,
-      //         "--threads", request_action.batch_hack.threads,
-      //         "--server", batch_server
-      //       ]
-      //       let weaken_hack_script_args = [
-      //         "--target", server_to_target,
-      //         "--addMsec", request_action.weaken_hack.addMsec,
-      //         "--threads", request_action.weaken_hack.threads,
-      //         "--server", batch_server
-      //       ]
-      //       let grow_script_args = [
-      //         "--target", server_to_target,
-      //         "--addMsec", request_action.batch_grow.addMsec,
-      //         "--threads", request_action.batch_grow.threads,
-      //         "--server", batch_server,
-      //         "--sec_inc", request_action.batch_grow.sec_inc
-      //       ]
-      //       let weaken_grow_script_args = [
-      //         "--target", server_to_target,
-      //         "--addMsec", request_action.weaken_grow.addMsec,
-      //         "--threads", request_action.weaken_grow.threads,
-      //         "--server", batch_server
-      //       ]
-      //       let hack_script_pid = ns.exec("scripts/hack.js",batch_server,request_action.batch_hack.threads,...hack_script_args)
-      //       let weaken_hack_script_pid = ns.exec("scripts/weaken.js",batch_server,request_action.weaken_hack.threads,...weaken_hack_script_args)
-      //       let grow_script_pid = ns.exec("scripts/grow.js",batch_server,request_action.batch_grow.threads,...grow_script_args)
-      //       let weaken_grow_script_pid = ns.exec("scripts/weaken.js",batch_server,request_action.weaken_grow.threads,...weaken_grow_script_args)
-      //       if (
-      //           hack_script_pid == 0
-      //       ||  weaken_hack_script_pid == 0
-      //       ||  grow_script_pid == 0
-      //       ||  weaken_grow_script_pid == 0
-      //       ) {
-      //         ns.print("Had to kill batch hack processes due to missing pid")
-      //         ns.toast("Had to kill batch hack processes due to missing pid", "warning")
-      //         ns.kill(hack_script_pid)
-      //         ns.kill(weaken_grow_script_pid)
-      //         ns.kill(grow_script_pid)
-      //         ns.kill(weaken_grow_script_pid)
-
-      //         // Something about the server we attempted to use is not reflected in the state we maintain.
-      //         all_server_status[batch_server].free_ram = ns.getServerMaxRam(batch_server) - ns.getServerUsedRam(batch_server)
-      //         SERVER_INFO_HANDLER.clear()
-      //         SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //       }
-      //       else {
-      //         all_server_status[batch_server].free_ram = all_server_status[batch_server].free_ram - ram_needed
-      //         all_server_status[batch_server].actions[hack_script_pid] = {
-      //           "server": batch_server,
-      //           "target": server_to_target,
-      //           "action": "hack",
-      //           "threads": request_action.batch_hack.threads
-      //         }
-      //         all_server_status[batch_server].actions[weaken_hack_script_pid] = {
-      //           "server": batch_server,
-      //           "target": server_to_target,
-      //           "action": "weaken",
-      //           "threads": request_action.weaken_hack.threads
-      //         }
-      //         all_server_status[batch_server].actions[grow_script_pid] = {
-      //           "server": batch_server,
-      //           "target": server_to_target,
-      //           "action": "grow",
-      //           "threads": request_action.batch_grow.threads
-      //         }
-      //         all_server_status[batch_server].actions[weaken_grow_script_pid] = {
-      //           "server": batch_server,
-      //           "target": server_to_target,
-      //           "action": "weaken",
-      //           "threads": request_action.weaken_grow.threads
-      //         }
-      //         SERVER_INFO_HANDLER.clear()
-      //         SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //       }
-      //     }
-      //     else {
-      //       ns.print("No Server Fit for Batch Hack work")
-      //       ns.toast("No Server Fit for Batch Hack work","warning",5000)
-      //     }
-      //   }
-      //   // Action an individual manage/prepare server request
-      //   else if (
-      //       request_action.script_action == "manage"
-      //   ||  request_action.script_action == "preserv"
-      //   ) {
-      //     let launch_manager = true
-      //     if (request_action.script_action == "manage") {
-      //       filename = "scripts/manage_server_hack.js"
-      //     }
-      //     else if (request_action.script_action == "preserv") {
-      //       filename = "scripts/manage_server_prep.js"
-      //     }
-      //     ram_needed = ns.getScriptRam(filename)
-      //     // Try new management scripts on n00dles first
-      //     // if (server_to_target == "n00dles") {
-      //     //   filename = "scripts/manage_server_hack.js"
-      //     // }
-
-      //     let server_to_use = ""
-      //     for (let server in all_server_status) {
-      //       if (
-      //          server == "home"
-      //       || server.includes("pserv")
-      //       ) {
-      //         let server_scripts = ns.ps(server)
-      //         for (let script of server_scripts) {
-      //           switch (script.filename) {
-      //             case "scripts/manage_server_hack.js":
-      //               for (let script_arg of script.args){
-      //                 if (script_arg == server_to_target){
-      //                   launch_manager = false
-      //                   break
-      //                 }
-      //               }
-      //               break
-      //           }
-      //         }
-      //         if (
-      //             server == "home"
-      //         &&  ram_needed > all_server_status[server].free_ram - 8
-      //         ) {
-      //           continue
-      //         }
-      //         else if (
-      //             server.includes("pserv")
-      //         &&  ram_needed > all_server_status[server].free_ram
-      //         ) {
-      //           continue
-      //         }
-      //         else {
-      //           server_to_use = server
-      //           break
-      //         }
-      //       }
-      //     }
-      //     let adjustment = 0
-      //     if (server_to_use == "home") {
-      //       adjustment = 8
-      //     }
-          
-      //     if (server_to_use == "") {
-      //       launch_manager = false
-      //       ns.toast("Failed to launch manager for " + server_to_target + " due to lack of available RAM", "warning")
-      //     }
-      //     else if (ram_needed > (all_server_status[server_to_use].free_ram - adjustment)) {
-      //       launch_manager = false
-      //       ns.toast("Failed to launch manager for " + server_to_target + " after sever was selected, due to missing RAM", "error")
-      //     }
-      //     if (launch_manager) {
-      //       let script_args = [
-      //         "--target", server_to_target
-      //       ]
-      //       ns.print("Attempting to launch manager for " + server_to_target)
-      //       let script_pid = ns.exec(filename,server_to_use,1,...script_args)
-      //       if (script_pid != 0) {
-      //         all_server_status[server_to_use].free_ram = all_server_status[server_to_use].free_ram - ram_needed
-      //         all_server_status[server_to_use].actions[script_pid] = {
-      //           "server": server_to_use,
-      //           "target": server_to_target,
-      //           "action": request_action.script_action,
-      //           "threads": request_action.threads
-      //         }
-      //       }
-      //       else {
-      //         ns.toast("Failed to launch manager for " + server_to_target + " for unknown reason, pid == 0", "error")
-      //       }
-      //       SERVER_INFO_HANDLER.clear()
-      //       SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //     }
-      //     else {
-      //       ns.toast("Failed to launch a manager for some other reason?", "error")
-      //     }
-      //   }
-      //   // Action a global server manager request
-      //   else if (request_action.script_action == "manager") {
-      //     let filename = "scripts/manage_servers_v2.js"
-      //     let script_pid = ns.exec(filename,"home",request_action.threads)
-      //     if (script_pid != 0) {
-      //       all_server_status["home"].free_ram = all_server_status["home"].free_ram - ns.getScriptRam(filename)
-      //       all_server_status["home"].actions[script_pid] = {
-      //         "server": "home",
-      //         "target": request_action.target,
-      //         "action": request_action.script_action,
-      //         "threads": request_action.threads
-      //       }
-      //     }
-      //     SERVER_INFO_HANDLER.clear()
-      //     SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //   }
-      //   // Action a global hacknet manager request
-      //   else if(request_action.script_action == "hacknet") {
-      //     let filename = "scripts/manage_hacknet.js"
-      //     let script_pid = ns.exec(filename,"home",request_action.threads)
-      //     if (script_pid != 0) {
-      //       all_server_status["home"].free_ram = all_server_status["home"].free_ram - ns.getScriptRam(filename)
-      //       all_server_status["home"].actions[script_pid] = {
-      //         "server": "home",
-      //         "target": request_action.target,
-      //         "action": request_action.script_action,
-      //         "threads": request_action.threads
-      //       }
-      //     }
-      //     SERVER_INFO_HANDLER.clear()
-      //     SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //   }
-      //   // Action a global personal server manager request
-      //   else if (request_action.script_action == "pserver") {
-      //     let filename = "scripts/manage_pservers.js"
-      //     let script_pid = ns.exec(filename,"home",request_action.threads)
-      //     if (script_pid != 0) {
-      //       all_server_status["home"].free_ram = all_server_status["home"].free_ram - ns.getScriptRam(filename)
-      //       all_server_status["home"].actions[script_pid] = {
-      //         "server": "home",
-      //         "target": request_action.target,
-      //         "action": request_action.script_action,
-      //         "threads": request_action.threads
-      //       }
-      //     }
-      //     SERVER_INFO_HANDLER.clear()
-      //     SERVER_INFO_HANDLER.write(JSON.stringify(all_server_status))
-      //   }
-      //   else if (request_action.script_action == "weakexp") {
-      //     all_server_status[request_action.server].free_ram = all_server_status[request_action.server].free_ram - request_action.ram_used
-      //     all_server_status[request_action.server].actions[request_action.pid_to_use] = {
-      //       "server": request_action.server,
-      //       "target": request_action.target,
-      //       "action": request_action.script_action,
-      //       "threads": request_action.threads 
-      //     }
-      //   }
-      //   else if (request_action.script_action == "freeram") {
-      //     let filename = "scripts/manage_free_ram.js"
-      //     let launch_script = true
-      //     let server_scripts = ns.ps("home")          
-      //     for (let script of server_scripts) {
-      //       switch (script.filename) {
-      //         case filename:
-      //           launch_script = false
-      //           break
-      //       }
-      //     }
-      //     if (launch_script) {
-      //       let script_pid = ns.exec(filename,"home",request_action.threads)
-
-      //       if (script_pid != 0) {
-      //         all_server_status["home"].free_ram = all_server_status["home"].free_ram - ns.getScriptRam(filename)
-      //         all_server_status["home"].actions[script_pid] = {
-      //           "server": "home",
-      //           "target": request_action.target,
-      //           "action": request_action.script_action,
-      //           "threads": request_action.threads
-      //         }
-      //       }
-      //     }
-      //   }
-      //   else if (request_action.script_action == "repopti") {
-      //     let filename = "scripts/report_server_optis.js"
-      //     let script_pid = ns.exec(filename,"home",request_action.threads)
-
-      //     if (script_pid != 0) {
-      //       all_server_status["home"].free_ram = all_server_status["home"].free_ram - ns.getScriptRam(filename)
-      //       all_server_status["home"].actions[script_pid] = {
-      //         "server": "home",
-      //         "target": request_action.target,
-      //         "action": request_action.script_action,
-      //         "threads": request_action.threads
-      //       }
-      //     }
-      //   }
-      //   else if (request_action.script_action == "BNMult") {
-      //     let filename = "scripts/util/populate_bitnode_mults.js"
-      //     let script_pid = ns.exec(filename,"home",request_action.threads)
-
-      //     if (script_pid != 0) {
-      //       all_server_status["home"].free_ram = all_server_status["home"].free_ram - ns.getScriptRam(filename)
-      //       all_server_status["home"].actions[script_pid] = {
-      //         "server": "home",
-      //         "target": request_action.target,
-      //         "action": request_action.script_action,
-      //         "threads": request_action.threads
-      //       }
-      //     }
-      //   }
-      //   else if (request_action.script_action == "cctsolv") {
-      //     ns.tprint("WE ARE HERE")
-      //     await ns.sleep(10000)
-      //     let filename = "scripts/solve_cct.js"
-      //     ram_needed = ns.getScriptRam(filename)
-
-      //     let launch_solver = true
-      //     let server_to_use = ""
-      //     for (let server in all_server_status) {
-      //       if (
-      //          server == "home"
-      //       || server.includes("pserv")
-      //       ) {
-      //         if (
-      //             server == "home"
-      //         &&  ram_needed > all_server_status[server].free_ram - 8
-      //         ) {
-      //           continue
-      //         }
-      //         else if (
-      //             server.includes("pserv")
-      //         &&  ram_needed > all_server_status[server].free_ram
-      //         ) {
-      //           continue
-      //         }
-      //         else {
-      //           server_to_use = server
-      //           break
-      //         }
-      //       }
-      //     }
-      //     let adjustment = 0
-      //     if (server_to_use == "home") {
-      //       adjustment = 8
-      //     }
-      //     if (server_to_use == "") {
-      //       launch_solver = false
-      //       ns.toast("Failed to launch solver for " + request_action.filename + " due to lack of available RAM", "warning")
-      //     }
-      //     else if (ram_needed > (all_server_status[server_to_use].free_ram - adjustment)) {
-      //       launch_solver = false
-      //       ns.toast("Failed to launch manager for " + request_action.filename + " after sever was selected, due to missing RAM", "error")
-      //     }
-      //     else if (ram_needed > (ns.getServerMaxRam(server_to_use) - ns.getServerUsedRam(server_to_use) - adjustment)) {
-      //       launch_solver = false
-      //       ns.toast("Failed to launch manager for " + request_action.filename + " after sever was selected, Real Free RAM being different", "error")
-      //     }
-
-      //     if (launch_solver) {
-      //       let contract_info = {
-      //         "contract_server": request_action.target,
-      //         "contract_file": request_action.filename,
-      //         "contract_type": request_action.contract_type,
-      //         "contract_data": request_action.contract_data,
-      //         "contract_attempts": request_action.contract_attempts
-      //       }
-
-      //       ns.tprint(JSON.stringify(contract_info))
-
-      //       let script_args = [
-      //         "--server", server_to_use,
-      //         "--contract_info", JSON.stringify(contract_info)
-      //       ]
-      //       let script_pid = ns.exec(filename,server_to_use,request_action.threads,...script_args)
-
-      //       if (script_pid != 0) {
-      //         all_server_status[server_to_use].free_ram = all_server_status[server_to_use].free_ram - ram_needed
-      //         all_server_status[server_to_use].actions[script_pid] = {
-      //           "server": server_to_use,
-      //           "target": request_action.target,
-      //           "action": request_action.script_action,
-      //           "threads": request_action.threads
-      //         }
-      //       }
-      //       else {
-      //         ns.toast("Failed to launch manager for another reason")
-      //         await ns.sleep(30000)
-      //       }
-      //     }
-      //   }
-      // }
+      for (let pid of pid_array) {
+        ns.kill(parseInt(pid))
+      }
     }
     
     // Pop the update from the queue now that we've finished it

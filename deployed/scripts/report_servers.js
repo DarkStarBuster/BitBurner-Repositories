@@ -1,4 +1,4 @@
-import {colours} from "/scripts/util/colours.js"
+import {COLOUR, colourize} from "/scripts/util/colours.js"
 import {bitnode_mults} from "/scripts/util/bitnode_modifiers.js"
 import {scan_for_servers} from "/scripts/util/scan_for_servers.js"
 
@@ -378,8 +378,8 @@ function display_all_bitnode_info(ns) {
   table_strings.fill("")
 
   let dflt_val = 1
-  let larger_colour = colours.red
-  let smaller_colour = colours.green
+  let larger_colour = colourize(ns,COLOUR.RED, 9)
+  let smaller_colour = colourize(ns,COLOUR.GREEN, 9)
 
   for (let i = 1; i <= MAX_NUM_BITNODES; i++) {
     for (let j = 1; j <= MAX_BITNODE_LEVEL; j++) {
@@ -390,13 +390,13 @@ function display_all_bitnode_info(ns) {
       bitnode_title =
         bitnode_title
       + (bitnode_title == "" ? "" : "|")
-      + colours.white + bitnode.padStart(6) + " "
-      + colours.black 
+      + colourize(ns,COLOUR.WHITE, 4) + bitnode.padStart(6) + " "
+      + colourize(ns,COLOUR.BLACK, 4)
 
       for (let k = 0; k < keys.length; k++) {
         dflt_val = 1
-        larger_colour = colours.red
-        smaller_colour = colours.green
+        larger_colour = colourize(ns,COLOUR.RED, 9)
+        smaller_colour = colourize(ns,COLOUR.GREEN, 9)
         if (
             bitnode_mults[keys[k]].default != undefined
         &&  bitnode_mults[keys[k]].default != dflt_val
@@ -404,19 +404,19 @@ function display_all_bitnode_info(ns) {
           dflt_val = bitnode_mults[keys[k]].default
         }
         if (bitnode_mults[keys[k]].larger) {
-          larger_colour = colours.green
-          smaller_colour = colours.red
+          larger_colour = colourize(ns,COLOUR.GREEN, 9)
+          smaller_colour = colourize(ns,COLOUR.RED, 9)
         }
         table_strings[k] = 
           table_strings[k]                       // Previous String
         + (table_strings[k] == "" ? "" : "|")    // Seperator from Previous String if needed
-        + (bitnode_info[keys[k]] == dflt_val ? colours.yellow : (bitnode_info[keys[k]] > dflt_val  ? larger_colour : smaller_colour))
+        + (bitnode_info[keys[k]] == dflt_val ? colourize(ns,COLOUR.YELLOW,9) : (bitnode_info[keys[k]] > dflt_val  ? larger_colour : smaller_colour))
         //+ " " + keys[k].padEnd(max_key_length) + ": "
         + (keys[k] == "StaneksGiftExtraSize" ?
             String( (bitnode_info[keys[k]] < 0 ? "" : "+") + bitnode_info[keys[k]]).padStart(6)
           : ns.formatPercent(bitnode_info[keys[k]] / dflt_val,0).padStart(6)
           ) + " "
-        + colours.black //+ "|"
+        + colourize(ns,COLOUR.BLACK, 4) //+ "|"
       }
     }
   }
@@ -424,9 +424,9 @@ function display_all_bitnode_info(ns) {
   let table = ""
   for (let i = 0; i < table_strings.length; i++) {
     table = table
-    + colours.black + "║ "
-    + colours.white + keys[i].padEnd(max_key_length)
-    + colours.black + " ║"
+    + colourize(ns,COLOUR.BLACK, 4) + "║ "
+    + colourize(ns,COLOUR.WHITE, 4) + keys[i].padEnd(max_key_length)
+    + colourize(ns,COLOUR.BLACK, 4) + " ║"
     + table_strings[i] + "║"
     + "\n"
   }
@@ -440,10 +440,10 @@ function display_all_bitnode_info(ns) {
 
   let title = "All Bitnode Modifiers"
   ns.tprint("\n"
-  + colours.black + "╔═"
-  + colours.white + title
-  + colours.black + "".padEnd(table_width - (title.length + 3), "═") + "╗\n"
-  + colours.black + "║ " + "".padEnd(max_key_length) + " ║"
+  + colourize(ns,COLOUR.BLACK, 4) + "╔═"
+  + colourize(ns,COLOUR.WHITE, 4) + title
+  + colourize(ns,COLOUR.BLACK, 4) + "".padEnd(table_width - (title.length + 3), "═") + "╗\n"
+  + colourize(ns,COLOUR.BLACK, 4) + "║ " + "".padEnd(max_key_length) + " ║"
   + bitnode_title + "║\n"
   + "╠" + "".padEnd(table_width - 2, "═") + "╣\n"
   + table
@@ -479,13 +479,13 @@ function display_bitnode_info(ns) {
   }
 
   let dflt_val = 1
-  let larger_colour = colours.red
-  let smaller_colour = colours.green
+  let larger_colour = colourize(ns,COLOUR.RED,9)
+  let smaller_colour = colourize(ns,COLOUR.GREEN,9)
 
   for (let i = 0; i < keys.length; i++) {
     dflt_val = 1
-    larger_colour = colours.red
-    smaller_colour = colours.green
+    larger_colour = colourize(ns,COLOUR.RED,9)
+    smaller_colour = colourize(ns,COLOUR.GREEN,9)
     if (
         bitnode_mults[keys[i]].default != undefined
     &&  bitnode_mults[keys[i]].default != dflt_val
@@ -493,19 +493,19 @@ function display_bitnode_info(ns) {
       dflt_val = bitnode_mults[keys[i]].default
     }
     if (bitnode_mults[keys[i]].larger) {
-      larger_colour = colours.green
-      smaller_colour = colours.red
+      larger_colour = colourize(ns,COLOUR.GREEN,9)
+      smaller_colour = colourize(ns,COLOUR.RED,9)
     }
     table_strings[i % table_length] = 
       table_strings[i % table_length]                       // Previous String
     + (table_strings[i % table_length] == "" ? "" : "|")    // Seperator from Previous String if needed
-    + (bitnode_info[keys[i]] == dflt_val ? colours.yellow : (bitnode_info[keys[i]] > dflt_val  ? larger_colour : smaller_colour))
+    + (bitnode_info[keys[i]] == dflt_val ? colourize(ns,COLOUR.YELLOW,9) : (bitnode_info[keys[i]] > dflt_val  ? larger_colour : smaller_colour))
     + " " + keys[i].padEnd(max_key_length) + ": "
     + (keys[i] == "StaneksGiftExtraSize" ?
         String("+" + bitnode_info[keys[i]]).padStart(5)
       : ns.formatPercent(bitnode_info[keys[i]] / dflt_val,0).padStart(5)
       ) + " "
-    + colours.black
+    + colourize(ns,COLOUR.BLACK,4)
   }
 
   let table_width = 
@@ -514,15 +514,15 @@ function display_bitnode_info(ns) {
   + 9 // number of blankspace characters
   + 3 // Number of : characters
   + 15 // Number of characters devoted to percent values
-  let title_string = colours.black + "╔═" + colours.white + " BitNode Multipliers " + colours.black + String("").padEnd(table_width - (23 + 1),"═") + "╗"
+  let title_string = colourize(ns,COLOUR.BLACK,4) + "╔═" + colourize(ns,COLOUR.WHITE,4) + " BitNode Multipliers " + colourize(ns,COLOUR.BLACK,4) + String("").padEnd(table_width - (23 + 1),"═") + "╗"
 
   ns.tprint(title_string)
   for (let string of table_strings) {
-    string =  colours.black + "║" + string + "║"
+    string = colourize(ns,COLOUR.BLACK,4) + "║" + string + "║"
     ns.tprint(string)
   }
 
-  let footer_string = colours.black + "╚" + String("").padEnd(table_width - 2,"═") + "╝"
+  let footer_string = colourize(ns,COLOUR.BLACK,4) + "╚" + String("").padEnd(table_width - 2,"═") + "╝"
   ns.tprint(footer_string)
 
 }

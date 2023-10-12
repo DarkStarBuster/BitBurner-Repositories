@@ -43,6 +43,8 @@ function gain_from_core_upgrade(ns, level, ram, cores, hacknet_node_money_mult) 
 export async function main(ns) {
   ns.disableLog("sleep")
   ns.disableLog("getServerMoneyAvailable")
+
+  ns.setTitle("Manage Hacknet V2.0 - PID: " + ns.pid)
   
   const CONTROL_PARAMETERS    = ns.getPortHandle(1)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
@@ -82,7 +84,7 @@ export async function main(ns) {
     cost_mod  = control_params.hacknet.cost_mod
 
     let new_server_cost = ns.hacknet.getPurchaseNodeCost()
-    let new_server_gain = gain_per_level(ns)
+    let new_server_gain = gain_per_level(ns, hacknet_node_money_mult)
     let total_production = 0
 
     if (ns.hacknet.numNodes() > 0) {
@@ -149,6 +151,7 @@ export async function main(ns) {
         (ns.getServerMoneyAvailable("home") > (cost_mod * gain_cost))
     &&  !calc_only
     ) {
+      ns.print("Performing Action")
       switch (best_choice) {
         case "N":
           ns.hacknet.purchaseNode()

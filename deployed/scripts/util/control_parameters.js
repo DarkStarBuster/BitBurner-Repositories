@@ -13,8 +13,8 @@ export async function main(ns) {
       },
       "hacker": {
         "consider_early": 64, // Amount of RAM on home that we considers being below as being "early" in a run
-        "hack_batch_time_interval": 2000, // Milliseconds between hack batches
-        "total_hack_batch_limit": 6000 / 4, // <Total number of scripts we want running at any one time> / <4 as each hack batch runs 4 scripts>
+        "hack_batch_time_interval": 500, // Milliseconds between hack batches
+        "total_hack_batch_limit": 8000 / 4, // <Total number of scripts we want running at any one time> / <4 as each hack batch runs 4 scripts>
         "min_hack_threads_for_batch": 1 // Minimum number of Hack Threads to use when initially constructing a hack batch
       },
       "pserv": { // Parameters for the Personal Server Manager
@@ -24,7 +24,7 @@ export async function main(ns) {
         "mult_for_purchase_upg": 10 
       },
       "hacknet": { // Parameters for the Hacknet Manager
-        "calc_only": true, // When true, we just report the most 'optimal' purchase instead of actually purchasing it
+        "calc_only": false, // When true, we just report the most 'optimal' purchase instead of actually purchasing it
         "threshold": 5e-6, // Equivilant to 200000 seconds to payitself back
         "cost_mod" : 2     // We want to have cost_mod * cost available before we purchase the upgrade
       }

@@ -122,7 +122,7 @@ async function release_ram(ns, server_to_release_from, ram_amount, ram_request_h
   }
 
   if (!(ram_response.result === "OK")) {
-    ns.print("WARN RAM Manager did not allow us to release RAM\n" + JSON.stringify(ram_response))
+    ns.tprint("ERROR RAM Manager did not allow us to release RAM\n" + JSON.stringify(ram_response))
     return Promise.resolve(false)
   }
   
@@ -204,7 +204,7 @@ async function launch_child(ns, filename, server_to_target, ram_request_handler,
   }
 
   if (server_to_use === undefined) {
-    ns.tprint("ERROR Did not find free RAM to launch child process: " + filename + " targetting " + server_to_target)
+    ns.print("ERROR Did not find free RAM to launch child process: " + filename + " targetting " + server_to_target)
     return Promise.resolve(false)
   }
 
@@ -214,9 +214,12 @@ async function launch_child(ns, filename, server_to_target, ram_request_handler,
   let pid = ns.exec(filename, server_to_use, 1,...script_args)
   if (!(pid === 0)) {
     add_child_process(ns, pid, filename, server_to_use, server_to_target)
+    return Promise.resolve(true)
   }
   else {
     ns.tprint("ERROR Exec failed to launch child process: " + filename + " targetting " + server_to_target + " on " + server_to_use)
+    await release_ram(ns, server_to_use, RAM_INFO[server_to_use].free_ram, ram_request_handler, ram_provide_handler)
+    return Promise.resolve(false)
   }
 }
 
@@ -241,7 +244,7 @@ async function kill_child(ns, childs_target, ram_request_handler, ram_provide_ha
 
   if (!(server_of_target_process === undefined)) {
     // We have found a process that targets the server
-    ns.kill(pid_of_target_process)
+    ns.kill(parseInt(pid_of_target_process))
     let result = await release_ram(ns, server_of_target_process, RAM_INFO[server_of_target_process].processes[pid_of_target_process].ram_cost, ram_request_handler, ram_provide_handler)
     RAM_INFO[server_of_target_process].free_ram += RAM_INFO[server_of_target_process].processes[pid_of_target_process].ram_cost
     if (result) {
@@ -312,16 +315,14 @@ async function check_root(ns, force_update) {
           ns.toast("Successfully Rooted \"" + server + "\"", "success", 5000)
         }
 
-        if (!ns.fileExists("/scripts/util/weaken_v2.js",server)) ns.scp("/scripts/util/weaken_v2.js", server)
-        if (!ns.fileExists("/scripts/util/grow_v2.js",server))   ns.scp("/scripts/util/grow_v2.js", server)
-        if (!ns.fileExists("/scripts/util/hack_v2.js",server))   ns.scp("/scripts/util/hack_v2.js", server)
-
-        if (server.includes("pserv")) {
-          if (!ns.fileExists("/scripts/util/share.js",server))  ns.scp("/scripts/util/share.js", server)
-          if (!ns.fileExists("/scripts/manage_server_hack_v2.js",server)) ns.scp("/scripts/manage_server_hack_v2.js", server)
-          if (!ns.fileExists("/scripts/manage_server_prep_v2.js",server)) ns.scp("/scripts/manage_server_prep_v2.js", server)
-          if (!ns.fileExists("/scripts/solve_cct.js")) ns.scp("/scripts/solve_cct.js", server)
-        }
+        if (!ns.fileExists("/scripts/util/weaken_v2.js"       , server) || force_update) ns.scp("/scripts/util/weaken_v2.js"       , server)
+        if (!ns.fileExists("/scripts/util/grow_v2.js"         , server) || force_update) ns.scp("/scripts/util/grow_v2.js"         , server)
+        if (!ns.fileExists("/scripts/util/hack_v2.js"         , server) || force_update) ns.scp("/scripts/util/hack_v2.js"         , server)
+        if (!ns.fileExists("/scripts/util/share.js"           , server) || force_update) ns.scp("/scripts/util/share.js"           , server)
+        if (!ns.fileExists("/scripts/manage_server_hack_v2.js", server) || force_update) ns.scp("/scripts/manage_server_hack_v2.js", server)
+        if (!ns.fileExists("/scripts/manage_server_prep_v2.js", server) || force_update) ns.scp("/scripts/manage_server_prep_v2.js", server)
+        if (!ns.fileExists("/scripts/util/weaken_for_exp.js"  , server) || force_update) ns.scp("/scripts/util/weaken_for_exp.js"  , server)
+        if (!ns.fileExists("/scripts/solve_cct.js"            , server) || force_update) ns.scp("/scripts/solve_cct.js"            , server)
 
         let update = {
           "action": "update_info",
@@ -341,46 +342,6 @@ async function check_root(ns, force_update) {
   return Promise.resolve()
 }
 
-
-/**
- *  @param {NS} ns
- *  @param {string} target
- */
-function request_prepper(ns, target) {
-  const UPDATE_HANDLER = ns.getPortHandle(4)
-
-  let update = {
-    "action": "request_action",
-    "request_action": {
-      "script_action": "preserv",
-      "target": target,
-      "threads": 1
-    }
-  }
-  
-  UPDATE_HANDLER.write(JSON.stringify(update))
-}
-
-
-/**
- *  @param {NS} ns
- *  @param {string} target
- */
-function request_manager(ns, target) {
-  const UPDATE_HANDLER = ns.getPortHandle(4)
-
-  let update = {
-    "action": "request_action",
-    "request_action": {
-      "script_action": "manage",
-      "target": target,
-      "threads": 1
-    }
-  }
-  
-  UPDATE_HANDLER.write(JSON.stringify(update))
-}
-
 /** @param {NS} ns */
 async function check_manage(ns, control_params, bitnode_mults, server_info, ram_request_handler, ram_provide_handler) {
 
@@ -388,13 +349,24 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   let preping_servers = []
   for (let server in RAM_INFO) {
     for (let pid in RAM_INFO[server].processes) {
-      switch (RAM_INFO[server].processes[pid].filename) {
-        case "/scripts/manage_server_hack_v2.js":
-          managed_servers.push(RAM_INFO[server].processes[pid].target)
-          break
-        case "/scripts/manage_server_prep_v2.js":
-          preping_servers.push(RAM_INFO[server].processes[pid].target)
-          break
+      if (ns.isRunning(parseInt(pid))) {
+        ns.print("Live PID: " + pid)
+        switch (RAM_INFO[server].processes[pid].filename) {
+          case "/scripts/manage_server_hack_v2.js":
+            managed_servers.push(RAM_INFO[server].processes[pid].target)
+            break
+          case "/scripts/manage_server_prep_v2.js":
+            preping_servers.push(RAM_INFO[server].processes[pid].target)
+            break
+        }
+      }
+      else {
+        ns.print("Killed PID: " + pid)
+        let result = await release_ram(ns, server, RAM_INFO[server].processes[pid].ram_cost, ram_request_handler, ram_provide_handler)
+        if (!result) {
+          ns.tprint("ERROR PID " + pid + " is dead, but we failed to release the RAM associated with it.")
+        }
+        delete RAM_INFO[server].processes[pid]
       }
     }
   }
@@ -410,11 +382,11 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
     servers = []
   }
   else if (server_info["home"].max_ram < control_params.hacker.consider_early) {
-    servers = [
-      "n00dles",
-      "joesguns",
-      "phantasy"
-    ]
+    let temp_server = []
+    if (servers.includes("n00dles")) temp_server.push("n00dles")
+    if (servers.includes("joesguns")) temp_server.push("joesguns")
+    if (servers.includes("phantasy")) temp_server.push("phantasy")
+    servers = temp_server
   }
 
   servers.sort(
@@ -467,17 +439,17 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   }
 
   let servers_to_hack = []
-  let hack_batche_cnt = 0
+  let hack_batch_cnt = 0
 
   for (let server of hackable_servers){
     let batches_to_saturate_server = Math.max(Math.floor(ns.getWeakenTime(server) / control_params.hacker.hack_batch_time_interval), 1)
-    if (hack_batche_cnt + batches_to_saturate_server < control_params.hacker.total_hack_batch_limit) {
+    if (hack_batch_cnt + batches_to_saturate_server < control_params.hacker.total_hack_batch_limit) {
       ns.print("Added " + server + " with " + batches_to_saturate_server + " to the list of servers we will hack")
-      hack_batche_cnt += batches_to_saturate_server
+      hack_batch_cnt += batches_to_saturate_server
       servers_to_hack.push(server)
     }
   }
-  ns.print("Total of " + hack_batche_cnt + " hack batches are expected to be spawned")
+  ns.print("Total of " + hack_batch_cnt + " hack batches are expected to be spawned")
 
   for (let server of managed_servers) {
     if (servers_to_hack.indexOf(server) === -1) {
@@ -501,7 +473,11 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   for (let server of servers_to_prep) {
     // Not preping currently, request new prepper
     let successful = false
-    if (preping_servers.length == 0) {
+    //ns.print("Server: " + server + ". P_S: " + preping_servers.toString())
+    if (
+        preping_servers.length < 2
+    &&  !preping_servers.includes(server)
+    ) {
       ns.print("Launching prepper for " + server + ".")
       successful = await launch_child(ns, "/scripts/manage_server_prep_v2.js", server, ram_request_handler, ram_provide_handler)
       if (!successful) {
@@ -526,6 +502,8 @@ export async function main(ns) {
   // Disable logging of things in this script
   disable_logging(ns)
 
+  ns.setTitle("Manage Servers V3.0 - PID: " + ns.pid)
+
   while (
       CONTROL_PARAMETERS.empty()
   ||  BITNODE_MULTS_HANDLER.empty()
@@ -542,6 +520,7 @@ export async function main(ns) {
   await ns.sleep(500)
 
   let loop_count = 0
+  let initialised = false
 
   while (true) {
 
@@ -558,15 +537,22 @@ export async function main(ns) {
 
     // Every one hundred and twenty loops (offset by sixty loops)
     let force_update = false
-    if ((loop_count % 60) == 0) {
+    if (
+        ((loop_count + 60) % 120) == 0
+    || !initialised
+    ) {
       force_update = true
     }
 
     // Every twelve loops
-    if ((loop_count % 12) == 0) {
+    if (
+        (loop_count % 12) == 0
+    || !initialised
+    ) {
       // Root New Servers
       ns.print("Root New Servers")
       await check_root(ns, force_update)
+      initialised = true
     }
 
     // Every twelve loops (offset by six loops)

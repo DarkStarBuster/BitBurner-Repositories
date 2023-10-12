@@ -15,6 +15,8 @@ export async function main(ns) {
   let bitnode_mults = JSON.parse(BITNODE_MULTS_HANDLER.peek())
 
   ns.disableLog("getServerMoneyAvailable")
+
+  ns.setTitle("Manage Personal Servers V2.0 - PID: " + ns.pid)
   
   // Multiplier to Cost of New Server/Upgrading Server no matter the RAM
   let pserv_cost_mult         = bitnode_mults["PurchasedServerCost"]
@@ -123,7 +125,7 @@ export async function main(ns) {
       }
       else {
         ns.print("Server: " + server + " [" + p_servers[server] + "]=>" + possible_ram[p_servers[server]+1] + " Upg. Cost: " + ns.getPurchasedServerUpgradeCost(server,possible_ram[p_servers[server]+1]))
-        if (ns.getPurchasedServerUpgradeCost(server,possible_ram[p_servers[server]+1]) * (purchase_mult < ns.getServerMoneyAvailable("home"))) {
+        if ((ns.getPurchasedServerUpgradeCost(server,possible_ram[p_servers[server]+1]) * purchase_mult) < ns.getServerMoneyAvailable("home")) {
           ns.print("Go for purchase")
           let upgraded = ns.upgradePurchasedServer(server,possible_ram[p_servers[server]+1])
           if (upgraded) {

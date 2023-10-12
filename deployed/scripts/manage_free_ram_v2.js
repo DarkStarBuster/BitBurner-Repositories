@@ -91,22 +91,197 @@ const FIVE_PORT_SERVERS = [
   "zb-institute"
 ]
 
+async function is_server_busy(ns, server, ram_request_handler, ram_provide_handler) {
+  let request = {
+    "action"   : "free_ram_enquire"
+   ,"server"   : server
+   ,"requester": ns.pid
+  }
+
+  while (!ram_request_handler.tryWrite(JSON.stringify(request))) {
+    await ns.sleep(50)
+  }
+
+  let awaiting_response = true
+  let response = {}
+  while (awaiting_response) {
+    while(ram_provide_handler.empty()) {
+      await ns.sleep(50)
+    }
+    response = JSON.parse(ram_provide_handler.peek())
+    if (parseInt(response.requester) === ns.pid) {
+      awaiting_response = false
+      ram_provide_handler.read()
+    }
+    else {
+      await ns.sleep(50)
+    }
+  }
+
+  if (!(response.result === "OK")) {
+    // Something went wrong with our request, log and return TRUE.
+    ns.print("WARN Enquire Response for server " + server + " failed with reason: " + response.failure_reason)
+    return Promise.resolve(true)
+  }
+  else {
+    return Promise.resolve(!(response.max == response.free))
+  }
+}
+
+async function request_ram(ns, server, ram_request_handler, ram_provide_handler) {
+  let request = {
+    "action"   : "free_ram_request"
+   ,"server"   : server
+   ,"requester": ns.pid
+  }
+
+  while (!ram_request_handler.tryWrite(JSON.stringify(request))) {
+    await ns.sleep(50)
+  }
+
+  let awaiting_response = true
+  let response = {}
+  while (awaiting_response) {
+    while(ram_provide_handler.empty()) {
+      await ns.sleep(50)
+    }
+    response = JSON.parse(ram_provide_handler.peek())
+    if (parseInt(response.requester) === ns.pid) {
+      awaiting_response = false
+      ram_provide_handler.read()
+    }
+    else {
+      await ns.sleep(50)
+    }
+  }
+
+  if (!(response.result === "OK")) {
+    // Something went wrong with our request, log and return FALSE
+    ns.print("WARN Request Response for server " + server + " failed with reason: " + response.failure_reason)
+    return Promise.resolve(false)
+  }
+  else {
+    return Promise.resolve(true)
+  }
+}
+
+async function release_ram(ns, server, ram_request_handler, ram_provide_handler) {
+  let request = {
+    "action"   : "free_ram_release"
+   ,"server"   : server
+   ,"requester": ns.pid
+  }
+
+  while (!ram_request_handler.tryWrite(JSON.stringify(request))) {
+    await ns.sleep(50)
+  }
+
+  let awaiting_response = true
+  let response = {}
+  while (awaiting_response) {
+    while(ram_provide_handler.empty()) {
+      await ns.sleep(50)
+    }
+    response = JSON.parse(ram_provide_handler.peek())
+    if (parseInt(response.requester) === ns.pid) {
+      awaiting_response = false
+      ram_provide_handler.read()
+    }
+    else {
+      await ns.sleep(50)
+    }
+  }
+
+  if (!(response.result === "OK")) {
+    // Something went wrong with our request, log and return FALSE
+    ns.print("WARN Release Response for server " + server + " failed with reason: " + response.failure_reason)
+    return Promise.resolve(false)
+  }
+  else {
+    return Promise.resolve(true)
+  }
+}
+
+async function consume_ram(ns, p_servers, server_to_run, server_to_check, script_to_run, ram_request_handler, ram_provide_handler) {
+  ns.print(
+    "1: " + ns.getServerUsedRam(server_to_check) + "\n"
+  + "2: " + ns.getServerMaxRam(server_to_check) * 0.9 + "\n"
+  + "3: " + server_to_check
+  )
+
+  let server_busy = await is_server_busy(ns, server_to_check, ram_request_handler, ram_provide_handler)
+
+  if (
+      server_busy
+  &&  ( (   !(server_to_check === "home")
+          && p_servers[server_to_check].process_id === 0)
+      ||(   server_to_check === "home")
+      )
+  ) {
+    if(!(p_servers[server_to_run].process_id === 0)) {
+      ns.kill(p_servers[server_to_run].process_id)
+      p_servers[server_to_run].process_id = 0
+      p_servers[server_to_run].threads = 0
+      await release_ram(ns, server_to_run, ram_request_handler, ram_provide_handler)
+    }
+  }
+  else {
+    // server_to_check is not Busy
+    let threads = Math.floor(p_servers[server_to_run].server_ram / ns.getScriptRam(script_to_run))
+    ns.print(
+      "4: " + p_servers[server_to_run].process_id + "\n"
+    + "5: " + threads + "\n"
+    + "6: " + p_servers[server_to_run].threads
+    )
+    if (
+       p_servers[server_to_run].process_id === 0
+    && threads > 0
+    ) {
+      ns.print("Option C1")
+      let have_ram = await request_ram(ns, server_to_run, ram_request_handler, ram_provide_handler)
+      if (have_ram) {
+        let process_id = ns.exec(script_to_run, server_to_run, threads, "--target", "foodnstuff", "--threads", threads)
+        p_servers[server_to_run].process_id = process_id
+        p_servers[server_to_run].threads = threads
+      }
+    }
+    else if (threads > p_servers[server_to_run].threads) {
+      ns.print("Option C2")
+      ns.kill(p_servers[server_to_run].process_id)
+      p_servers[server_to_run].process_id = 0
+      p_servers[server_to_run].threads = 0
+      await release_ram(ns, server_to_run, ram_request_handler, ram_provide_handler)
+      let have_ram = await request_ram(ns, server_to_run, ram_request_handler, ram_provide_handler)
+      if (have_ram) {
+        let process_id = ns.exec(script_to_run, server_to_run, threads, "--target", "foodnstuff", "--threads", threads)
+        p_servers[server_to_run].process_id = process_id
+        p_servers[server_to_run].threads = threads
+      }
+    }
+  }
+  return p_servers
+}
+
 /** @param {NS} ns */
 export async function main(ns) {
-  const SERVER_INFO_HANDLER = ns.getPortHandle(3)
-  const UPDATE_HANDLER = ns.getPortHandle(4)
+  const CONTROL_PARAMETERS    = ns.getPortHandle(1)
+  const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
+  const SERVER_INFO_HANDLER   = ns.getPortHandle(3)
+  const RAM_REQUEST_HANDLER   = ns.getPortHandle(5)
+  const RAM_PROVIDE_HANDLER   = ns.getPortHandle(6)
 
-  ns.disableLog("scan")
-  ns.disableLog("getServerMaxRam")
-  ns.disableLog("getServerMaxMoney")
-  ns.disableLog("getServerUsedRam")
-  ns.disableLog("getServerNumPortsRequired")
-  ns.disableLog("exec")
+  ns.disableLog("ALL")
+  ns.enableLog("exec")
+  ns.enableLog("kill")
+
+  ns.setTitle("Manage Free RAM V2.0 - PID: " + ns.pid)
   
-  // Possibly at game start? Either wait to be killed, or listen for the write that follows the execution of this process.
-  if (SERVER_INFO_HANDLER.empty()) {
-    ns.print("Awaiting next Server Info Handler write")
-    await SERVER_INFO_HANDLER.nextWrite()
+  while (
+      CONTROL_PARAMETERS.empty()
+  ||  BITNODE_MULTS_HANDLER.empty()
+  ||  SERVER_INFO_HANDLER.empty()
+  ) {
+    await ns.sleep(50)
   }
 
   let p_servers_array = []
@@ -121,7 +296,12 @@ export async function main(ns) {
   }
 
   while(true) {
+    let control_params = JSON.parse(CONTROL_PARAMETERS.peek())
+    let server_info    = JSON.parse(SERVER_INFO_HANDLER.peek())
+    let all_servers    = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
+
     for (let server of ns.getPurchasedServers()){
+      ns.print("Check server " + server)
       if (!p_servers_array.includes(server)) {
         p_servers[server] = {
           "server_ram": ns.getServerMaxRam(server),
@@ -130,258 +310,30 @@ export async function main(ns) {
         }
         p_servers_array.push(server)
       }
-      else if (
-        p_servers[server].process_id == 0
-      ) {
+      else {
         p_servers[server].server_ram = ns.getServerMaxRam(server)
-        p_servers[server].threads = 0
       }
+
+      let server_to_check
+      let filename
+      switch (server) {
+        case "pserv-0":
+          server_to_check = "home"
+          filename = "/scripts/util/weaken_for_exp.js"
+          break
+        case "pserv-24":
+          server_to_check = "pserv-23"
+          filename = "/scripts/util/share.js"
+          break
+        default:
+          server_to_check = "pserv-" + (parseInt(server.split("-")[1]) - 1)
+          filename = "/scripts/util/weaken_for_exp.js"
+          break
+      }
+
+      await consume_ram(ns, p_servers, server, server_to_check, filename, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
     }
-    let server_info = JSON.parse(SERVER_INFO_HANDLER.peek())
-    let hacking_servers = []
-    let hackable_servers = []
-    let all_servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
-
-    let preserv_servers = []
-
-    for (let server in server_info) {
-      for (let process_id in server_info[server].actions) {
-        if (
-            server_info[server].actions[process_id].action == "preserv"
-        &&  preserv_servers.indexOf(server_info[server].actions[process_id].target) < 0
-        ) {
-          //ns.print(all_server_info[server].actions[process_id].target + " added to preserv server list")
-          preserv_servers.push(server_info[server].actions[process_id].target)
-        }
-      }
-    }
-
-    for (let server of all_servers) {
-      if (preserv_servers.includes(server)) {
-        continue
-      }
-      hackable_servers.push(server)
-    }
-
-    hackable_servers.sort(
-      function(a,b){
-        let player = ns.getPlayer()
-        let server_a = ns.getServer(a)
-        let server_b = ns.getServer(b)
-        server_a.hackDifficulty = server_a.minDifficulty
-        server_a.moneyAvailable = server_a.moneyMax
-        server_b.hackDifficulty = server_b.minDifficulty
-        server_b.moneyAvailable = server_b.moneyMax
-  
-        let server_a_hack_percent = ns.formulas.hacking.hackPercent(server_a, player)
-        let server_a_hack_chance  = ns.formulas.hacking.hackChance (server_a, player)
-        let server_a_weaken_time  = ns.formulas.hacking.weakenTime (server_a, player)
-        let server_b_hack_percent = ns.formulas.hacking.hackPercent(server_b, player)
-        let server_b_hack_chance  = ns.formulas.hacking.hackChance (server_b, player)
-        let server_b_weaken_time  = ns.formulas.hacking.weakenTime (server_b, player)
-  
-        return (server_b_hack_percent * server_b_hack_chance * server_b.moneyMax)
-        - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
-      }
-    )
-
-    let servers_to_ignore = []
-    let servers_to_hack = []
-    let hack_batches_needed = 0
-
-    for (let server of hackable_servers){
-      let server_batches_needed = Math.floor(ns.getWeakenTime(server) / HACK_BATCH_TIME_LIMIT)
-      if (server_batches_needed < 1) {
-        servers_to_ignore.push(server)
-        ns.print("Added " + server + " to the ignore list as we're too fast hacking it")
-        continue
-      }
-      server_batches_needed = Math.max(server_batches_needed,1)
-      if (hack_batches_needed + server_batches_needed < TOTAL_HACK_BATCH_LIMIT) {
-        ns.print("Added " + server + " with " + server_batches_needed + " to the list of servers we expect to be hacking")
-        hack_batches_needed += server_batches_needed
-        servers_to_hack.push(server)
-      }
-      // else {
-      //   // Adding another server will cause us to go over the limit we have set ourselves.
-      //   ns.print("Total of " + hack_batches_needed + " hack batches are expected to be spawned")
-      //   break
-      // }
-    }
-    ns.print("Total of " + hack_batches_needed + " hack batches are expected to be spawned")
-
-
-    //ns.print("Rooted Servers:")
-    //ns.print(rooted_servers)
-
-    for (let server in server_info) {
-      //ns.print("Looking at server: " + server)
-      for (let action in server_info[server].actions) {
-        //ns.print("Looking at server: " + server + ":" + action + " which is " + server_info[server].actions[action].action)
-        if (
-          (   
-              server_info[server].actions[action].action == "hack"
-          ||  server_info[server].actions[action].action == "weaken"
-          ||  server_info[server].actions[action].action == "grow"
-          )
-        &&  hacking_servers.indexOf(server_info[server].actions[action].target) == -1
-        &&  preserv_servers.indexOf(server_info[server].actions[action].target) == -1
-        //&&  servers_to_ignore.indexOf(server_info[server].actions[action].target) == -1
-        ) {
-          hacking_servers.push(server_info[server].actions[action].target)
-        }
-      }
-    }
-
-    let missed_server = false
-    // Compare lengths
-    if (servers_to_hack.length != hacking_servers.length) {
-      for (let server of servers_to_hack) {
-        if (hacking_servers.indexOf(server) == -1) {
-          ns.print("Missing hack threads on " + server)
-          missed_server = true
-        }
-      }
-    }
-    //await ns.sleep(60000)
-    ns.print("Servers to Hack length: " + servers_to_hack.length + ". Hacking Servers length: " + hacking_servers.length + ". Missed Server: " + missed_server)
-
-    // We are hacking every server we have rooted, RAM is free for additional EXP / Share threads
-    if (
-        servers_to_hack.length == hacking_servers.length
-    ||  (
-            servers_to_hack.length < hacking_servers.length
-        &&  !missed_server
-        ) 
-    ) {
-      ns.print("Consider servers to launch free ram users on")
-      for (let server in p_servers) {
-        let filename = "/scripts/weaken_for_exp.js"
-        if (server == "pserv-24") {
-          filename = "/scripts/share.js"
-        }
-        if (
-            p_servers[server].process_id == 0
-        &&  ns.ps(server).length == 0
-        &&  (   (   server == "pserv-0"
-                &&  (ns.getServerMaxRam("home") - ns.getServerUsedRam("home")) > 32
-                )
-            ||  server != "pserv-0"
-            )
-        ) {
-          ns.print("Server " + server + " is free to use for " + filename + ".")
-          let threads = Math.floor((p_servers[server].server_ram - ns.getServerUsedRam(server)) / ns.getScriptRam(filename))
-          if (!ns.fileExists(filename,server))  ns.scp(filename, server)
-          // let process_id = ns.exec(filename,server,threads,"--target","foodnstuff","--threads",threads)
-
-          // if (process_id != 0) {
-          //   ns.print("Executed " + filename + " script on " + server + " using " + ns.formatRam(threads*ns.getScriptRam(filename)) + " RAM")
-          //   let update_1 = {
-          //     "action": "request_action",
-          //     "request_action": {
-          //       "action": "weakexp",
-          //       "target": server,
-          //       "server": server,
-          //       "pid_to_use": process_id,
-          //       "ram_used": threads * ns.getScriptRam(filename),
-          //       "threads": threads
-          //     }
-          //   }
-
-          //   p_servers[server].process_id = process_id
-          //   p_servers[server].threads = threads
-          //   while (UPDATE_HANDLER.full()) {
-          //     await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-          //   }
-          //   while (!UPDATE_HANDLER.tryWrite(JSON.stringify(update_1))){
-          //     await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-          //   }
-          // }
-        }
-        else if (
-            p_servers[server].process_id != 0
-        &&  p_servers[server].server_ram != ns.getServerMaxRam(server)
-        ) {
-          // Server has a weaken_for_exp process but has grown
-          ns.print("Kill current " + filename + " script since the server has grown")
-          p_servers[server].server_ram = ns.getServerMaxRam(server)
-          ns.kill(p_servers[server].process_id)
-          // let update_2 = {
-          //   "action": "update_info",
-          //   "update_info": {
-          //     "server": server,
-          //     "freed_ram": ns.getScriptRam(filename) * p_servers[server].threads,
-          //     "pid_to_remove": p_servers[server].process_id
-          //   }
-          // }
-          // while (UPDATE_HANDLER.full()) {
-          //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-          // }
-          // while (!UPDATE_HANDLER.tryWrite(JSON.stringify(update_2))){
-          //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-          // }
-          p_servers[server].process_id = 0
-          p_servers[server].threads = 0
-        }
-        else if (
-            server == "pserv-0"
-        &&  (ns.getServerMaxRam("home") - ns.getServerUsedRam("home")) < 32
-        ) {
-          if (p_servers[server].process_id != 0) {
-            ns.print("Kill current " + filename + " on " + server + " as we have little space on home")
-            ns.kill(p_servers[server].process_id)
-            // let update_2 = {
-            //   "action": "update_info",
-            //   "update_info": {
-            //     "server": server,
-            //     "freed_ram": ns.getScriptRam(filename) * p_servers[server].threads,
-            //     "pid_to_remove": p_servers[server].process_id
-            //   }
-            // }
-            // while (UPDATE_HANDLER.full()) {
-            //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-            // }
-            // while (!UPDATE_HANDLER.tryWrite(JSON.stringify(update_2))){
-            //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-            // }
-            p_servers[server].process_id = 0
-            p_servers[server].threads = 0
-          }
-        }
-      }
-    }
-    // We are not hacking every server we have rooted, free up all RAM to allow for other processes
-    else {
-      ns.print("Time to kill all scripts")
-      for (let server in p_servers) {
-        let filename = "/scripts/weaken_for_exp.js"
-        if (server == "pserv-24") {
-          filename = "/scripts/share.js"
-        }
-        if (p_servers[server].process_id != 0) {
-          ns.kill(p_servers[server].process_id)
-
-          // let update_3 = {
-          //   "action": "update_info",
-          //   "update_info": {
-          //     "server": server,
-          //     "freed_ram": ns.getScriptRam(filename) * p_servers[server].threads,
-          //     "pid_to_remove": p_servers[server].process_id
-          //   }
-          // }
-          // while (UPDATE_HANDLER.full()) {
-          //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-          // }
-          // while (!UPDATE_HANDLER.tryWrite(JSON.stringify(update_3))){
-          //   await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-          // }
-          p_servers[server].process_id = 0
-          p_servers[server].threads = 0
-        }
-      }
-    }
-
-    await ns.sleep(10000)
+    await ns.sleep(10)
   }
 
 }
