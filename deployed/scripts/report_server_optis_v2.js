@@ -136,6 +136,7 @@ export async function main(ns) {
         - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
       }
     )
+    await ns.sleep(200)
   }
 
 }

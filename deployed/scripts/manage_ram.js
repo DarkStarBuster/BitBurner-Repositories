@@ -293,8 +293,9 @@ function free_ram_enquire(ns, server, requester) {
 function release_pids_ram(ns, pid_to_release) {
   for (let server in ram_state) {
     for (let pid in ram_state[server].ram_slices) {
-      if (pid === pid_to_release) {
-        ram_state[server].free_ram += ram_slices[pid].slice_amount
+      ns.print("PID: " + parseInt(pid) + " TYPE: " + typeof parseInt(pid) + " RELEASE: " + pid_to_release + " TYPE: " + typeof pid_to_release)
+      if (parseInt(pid) === pid_to_release) {
+        ram_state[server].free_ram += ram_state[server].ram_slices[pid].slice_amount
         delete ram_state[server].ram_slices[pid]
       }
     }
@@ -365,6 +366,7 @@ export async function main(ns) {
         break
       case "death_react":
         release_pids_ram(ns, ram_request.pid)
+        //await ns.sleep(30000)
         break
       case "enquire_total_ram":
         response = {
@@ -382,6 +384,10 @@ export async function main(ns) {
           "state" : ram_state
         }
         break
+      // //TODO: Consolidate a PIDs RAM onto as few servers as possible?
+      // //   Maybe just as few low numbered P-Servers as possible? (To allow RAM Consumer processes to start)
+      // case "request_consolidation":
+      //   break
     }
 
     if (!(ram_request.action === "death_react")) {

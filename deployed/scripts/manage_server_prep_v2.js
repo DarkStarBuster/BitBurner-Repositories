@@ -155,6 +155,7 @@ export async function main(ns) {
           analysing = false
         }
         num_threads += 1
+        await ns.sleep(50)
       }
       
       let weaken_scripts = []
@@ -333,6 +334,7 @@ export async function main(ns) {
             if (decrease_expected >= (0.004 * threads_attempting)) {
               analysing = false
             }
+            await ns.sleep(10)
           }
           ns.print("Checking for " + threads_attempting + " threads of grow, " + weaken_threads + " of weaken.")
   
@@ -379,6 +381,7 @@ export async function main(ns) {
               }
             }
           }
+          await ns.sleep(10)
         }
 
         // We could not find RAM for a single grow thread (+ weaken) and there are scripts already running.
@@ -450,6 +453,7 @@ export async function main(ns) {
             weaken_server = undefined
           }
         }
+        await ns.sleep(10)
       }
       // Await the running batchs finishing and Release their RAM
       while (grow_scripts.length > 0) {

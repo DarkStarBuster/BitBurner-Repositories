@@ -383,9 +383,9 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   }
   else if (server_info["home"].max_ram < control_params.hacker.consider_early) {
     let temp_server = []
-    if (servers.includes("n00dles")) temp_server.push("n00dles")
-    if (servers.includes("joesguns")) temp_server.push("joesguns")
-    if (servers.includes("phantasy")) temp_server.push("phantasy")
+    if (servers.includes("n00dles")  && server_info["n00dles"]) temp_server.push("n00dles")
+    if (servers.includes("joesguns") && server_info["joesguns"]) temp_server.push("joesguns")
+    if (servers.includes("phantasy") && server_info["phantasy"]) temp_server.push("phantasy")
     servers = temp_server
   }
 
@@ -473,7 +473,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   for (let server of servers_to_prep) {
     // Not preping currently, request new prepper
     let successful = false
-    //ns.print("Server: " + server + ". P_S: " + preping_servers.toString())
+    ns.print("Server: " + server + ". P_S: " + preping_servers.length + ". Inclues: " + preping_servers.includes(server))
     if (
         preping_servers.length < 2
     &&  !preping_servers.includes(server)

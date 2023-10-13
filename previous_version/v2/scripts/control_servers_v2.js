@@ -1105,5 +1105,6 @@ export async function main(ns) {
     
     // Pop the update from the queue now that we've finished it
     UPDATE_HANDLER.read()
+    await ns.sleep(10)
   }
 }

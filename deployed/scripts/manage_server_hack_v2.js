@@ -4,7 +4,7 @@
  * @param {NetscriptPort} control_params 
  * @returns A batch definition.
  */
-function construct_batch(ns, target_server, control_params) {
+async function construct_batch(ns, target_server, control_params) {
   let player_info = ns.getPlayer()
   let server_info = ns.getServer(target_server)
   // Setup Server Object for use with Formulas API
@@ -12,6 +12,11 @@ function construct_batch(ns, target_server, control_params) {
   server_info.moneyAvailable = server_info.moneyMax
 
   let batch_info = {}
+
+  //TODO: Account for Hacking Level going up due to previous batches completing 
+  //REMINDER: Time to execute is determined at the time hack(), grow() or weaken() is *called*.
+  //          The *EFFECT* of those calls is determined at the moment of finishing and is determined
+  //          by the servers state at that moment, and the players stats at that moment.
 
   let hack_time   = ns.formulas.hacking.hackTime  (server_info, player_info)
   let grow_time   = ns.formulas.hacking.growTime  (server_info, player_info)
@@ -35,6 +40,7 @@ function construct_batch(ns, target_server, control_params) {
       grow_threads = ns.formulas.hacking.growThreads(server_info, player_info, server_info.moneyMax, 1)
       break
     }
+    await ns.sleep(10)
   }
 
   grow_threads = Math.ceil(grow_threads)
@@ -49,6 +55,7 @@ function construct_batch(ns, target_server, control_params) {
     if (decrease_expected >= (0.004 * grow_threads)) {
       analysing = false
     }
+    await ns.sleep(10)
   }
   
   analysing = true
@@ -58,6 +65,7 @@ function construct_batch(ns, target_server, control_params) {
     if (decrease_expected >= (0.002 * hack_threads)) {
       analysing = false
     }
+    await ns.sleep(10)
   }
 
   let weaken_hack_delay = 0
@@ -94,7 +102,7 @@ function construct_batch(ns, target_server, control_params) {
   batch_info.batch_weaken_grow.threads = weaken_threads_for_growth
   batch_info.batch_weaken_grow.addMsec = weaken_grow_delay
 
-  return batch_info
+  return Promise.resolve(batch_info)
 }
 
 /**
@@ -259,7 +267,7 @@ export async function main(ns) {
     control_params = JSON.parse(CONTROL_PARAMETERS.peek())
     ns.print("Begining analysis")
 
-    let batch_info = construct_batch(ns, arg_flags.target, control_params)
+    let batch_info = await construct_batch(ns, arg_flags.target, control_params)
 
     ns.print("Analyis complete; batch constructed.\n"+JSON.stringify(batch_info))
 
@@ -430,5 +438,6 @@ export async function main(ns) {
     else {
       ns.toast("Weird situation in server hack manager targetting " + arg_flags.target)
     }
+    await ns.sleep(10)
   }
 }

@@ -332,6 +332,9 @@ async function start_managers(ns, ram_request_handler, ram_provide_handler) {
       awaiting_response = false
       ram_provide_handler.read()
     }
+    else {
+      await ns.sleep(50)
+    }
   }
 
   ns.print("RAM Response: " + JSON.stringify(ram_response))
@@ -534,5 +537,6 @@ export async function main(ns) {
     
     // Pop the update from the queue now that we've finished it
     UPDATE_HANDLER.read()
+    await ns.sleep(50)
   }
 }
