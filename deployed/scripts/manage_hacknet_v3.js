@@ -245,6 +245,8 @@ export async function main(ns) {
       }
 
       // Best Return on Investment Action chosen. Now Do it if we have the money and aren't just calculating the best action.
+      // TODO: Perform the purchase only if the cost is less than a percentage of our current income stream?
+      //       Though that does mean we hit a cap a fair bit earlier and can't *grind* our way to higher incomes from hacknets.
       if (
           (ns.getServerMoneyAvailable("home") > (cost_mod * gain_cost))
       &&  !calc_only
