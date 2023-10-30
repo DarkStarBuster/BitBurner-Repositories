@@ -354,11 +354,11 @@ export async function main(ns) {
         ns.print("Execution time of loop: " + (pre_exec - post_exec) + " / " + await_time + " / " + control_params.hacker.hack_batch_time_interval)
         let hack_pid = 0
         if(batch_info.batch_hack.threads != 0) {
-            hack_pid        = ns.exec("/scripts/util/hack_v2.js"  , server_to_use, batch_info.batch_hack.threads       , ...hack_args)
+            hack_pid        = ns.exec("/scripts/util/hack_v2.js"  , server_to_use, {threads: batch_info.batch_hack.threads       ,temporary: true}, ...hack_args)
         }
-        let weaken_hack_pid = ns.exec("/scripts/util/weaken_v2.js", server_to_use, batch_info.batch_weaken_hack.threads, ...weaken_hack_args)
-        let grow_pid        = ns.exec("/scripts/util/grow_v2.js"  , server_to_use, batch_info.batch_grow.threads       , ...grow_args)
-        let weaken_grow_pid = ns.exec("/scripts/util/weaken_v2.js", server_to_use, batch_info.batch_weaken_grow.threads, ...weaken_grow_args)
+        let weaken_hack_pid = ns.exec("/scripts/util/weaken_v2.js", server_to_use, {threads: batch_info.batch_weaken_hack.threads,temporary: true}, ...weaken_hack_args)
+        let grow_pid        = ns.exec("/scripts/util/grow_v2.js"  , server_to_use, {threads: batch_info.batch_grow.threads       ,temporary: true}, ...grow_args)
+        let weaken_grow_pid = ns.exec("/scripts/util/weaken_v2.js", server_to_use, {threads: batch_info.batch_weaken_grow.threads,temporary: true}, ...weaken_grow_args)
         post_exec = performance.now()
 
         if (
