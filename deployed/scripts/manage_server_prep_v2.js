@@ -2,7 +2,7 @@ import { PORT_IDS } from "/scripts/util/port_management"
 import { COLOUR, colourize } from "/scripts/util/colours"
 import { release_ram, request_ram } from "/scripts/util/ram_management"
 
-/** @param {NS} ns */
+/** @param {import("../../.").NS} ns */
 export async function main(ns) {
   const our_pid   = ns.pid
   const arg_flags = ns.flags([
@@ -136,7 +136,7 @@ export async function main(ns) {
             "--threads", threads_attempting,
             "--addMsec", 0
           ]
-          let weaken_pid = ns.exec("/scripts/util/weaken_v2.js", response.server, threads_attempting, ...weaken_args)
+          let weaken_pid = ns.exec("/scripts/util/weaken_v2.js", response.server, {threads: threads_attempting, temporary: true}, ...weaken_args)
           if (!(weaken_pid === 0)) {
             threads_launched += threads_attempting
             threads_remaining -= threads_attempting
@@ -368,8 +368,8 @@ export async function main(ns) {
             "--threads", weaken_threads,
             "--addMsec", weaken_delay
           ]
-          let grow_pid   = ns.exec("/scripts/util/grow_v2.js"  , grow_server  , threads_attempting, ...grow_args  )
-          let weaken_pid = ns.exec("/scripts/util/weaken_v2.js", weaken_server, weaken_threads    , ...weaken_args)
+          let grow_pid   = ns.exec("/scripts/util/grow_v2.js"  , grow_server  , {threads: threads_attempting, temporary: true}, ...grow_args  )
+          let weaken_pid = ns.exec("/scripts/util/weaken_v2.js", weaken_server, {threads: weaken_threads    , temporary: true}, ...weaken_args)
   
           if (
               grow_pid   === 0
