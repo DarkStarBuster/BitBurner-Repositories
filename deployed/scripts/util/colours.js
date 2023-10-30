@@ -18,8 +18,11 @@ export const colours = {
   default: '\u001b[0m',
 }
 
+//export const DEFAULT_COLOUR = "\u001b[0m"
+
 export const COLOUR = {
-  RED    :  0
+  DEFAULT: -1
+ ,RED    :  0
  ,ORANGE :  1
  ,YELLOW :  2
  ,LGREEN :  3
@@ -52,7 +55,12 @@ const COLOUR_ARRAY = [
  ,/*BLACK  */ ["\u001b[38;2;32;32;32m" , "\u001b[38;2;48;48;48m" , "\u001b[38;2;64;64;64m" , "\u001b[38;2;80;80;80m" , "\u001b[38;2;96;96;96m"]
 ]
 
-export function colourize(ns,colour,intensity) {
+/**
+ * @param {number} colour 
+ * @param {number} intensity 
+ * @returns Colourizing escape code
+ */
+export function colourize(colour,intensity = 4) {
   //ns.tprint(colour + " : " + intensity)
   switch (colour) {
     case COLOUR.WHITE:
@@ -75,6 +83,8 @@ export function colourize(ns,colour,intensity) {
       if (intensity >= 0 && intensity <= 9) return COLOUR_ARRAY[colour][intensity]
       else return ""
       break
+    case COLOUR.DEFAULT:
+      return "\u001b[0m"
     default:
       return ""
   }

@@ -1,5 +1,5 @@
 /**
- * @param {NS} ns
+ * @param {import("../../.").NS} ns
  * @param {Object} contract_info
  * @param {any} result
  */
@@ -10,7 +10,7 @@ function log_attempt_result(ns,contract_info,result) {
     ns.tprint("Successfully finished contract " + contract_info.contract_file + ", reward is: " + reward)
   }
   else {
-    ns.tprint("Failed 'Find Largest Prime Factor' contract " + contract_info.contract_file+ " on " + contract_info.contract_server)
+    ns.tprint("Failed " + contract_info.contract_type + " contract " + contract_info.contract_file + " on " + contract_info.contract_server)
     ns.tprint("Data Given: " + contract_info.contract_data)
     ns.tprint("Result Calculated: " + result)
   }
@@ -41,7 +41,19 @@ function solve_flpf_cct(ns, contract_info) {
  * @param {Object} contract_info
  */
 function solve_swms_cct(ns, contract_info) {
-
+  // Server: global-pharm
+  // File: contract-550955.cct
+  // Type: Subarray with Maximum Sum
+  // Data: [-8,0,-1,6,10], TypeOf: object
+  // Attempts: 10
+  // Description: 
+  // Given the following integer array,
+  //  find the contiguous subarray (containing at least one number)
+  //   which has the largest sum and return that sum. 'Sum' refers to the sum of all the numbers in the subarray.
+  //  -8,0,-1,6,10
+  // scripts/solve_cct.js: Failed 'Find Largest Prime Factor' contract contract-550955.cct on global-pharm
+  // scripts/solve_cct.js: Data Given: -8,0,-1,6,10
+  // scripts/solve_cct.js: Result Calculated: 10
   let contract_data = contract_info.contract_data
 
   let subarray_value = -Infinity
@@ -57,7 +69,7 @@ function solve_swms_cct(ns, contract_info) {
   let array_length = num_array.length
   let subarray_length = 2
   while (subarray_length <= array_length) {
-    for(let i = 0; i < array_length - subarray_length; i++) {
+    for(let i = 0; i <= array_length - subarray_length; i++) {
       let subarray = num_array.slice(i,i+subarray_length)
 
       if (
@@ -140,7 +152,11 @@ function solve_sm_cct(ns, contract_info) {
   //spiral_matrix.length = x*y //don't need this, just push into the array
 
   // Start going right from [0][0]
-  let direction = "R"
+    let direction = "R"
+  if (matrix[0].length == 1) {
+    // If matrix is only 1 wide, we need to be going down to start with.
+    direction = "D"
+  }
   let x = 0
   let y = 0
 
@@ -197,13 +213,317 @@ function solve_ajg_cct(ns, contract_info) {
   log_attempt_result(ns,contract_info,(index == array.length) ? 1 : 0)
 }
 
+/**
+ * @param {NS} ns
+ * @param {Object} contract_info
+ */
+function solve_ajg2_cct(ns, contract_info) {
 
+  let array = contract_info.contract_data
+  if (array[0] == 0) {
+    log_attempt_result(ns,contract_info, 0)
+    return
+  }
+  const n = array.length;
+  let distance = 0;
+  let jumps = 0;
+  let last_jump_origin = -1;
+  // While we haven't reach the final index
+  while (distance < n - 1) {
+      let jump_origin = -1;
+      // Start from the distance we have reached, loop back until we get to the point we jumped from.
+      for (let i = distance; i > last_jump_origin; i--) {
+          // If this index of the array allows us to get further along the array, mark it as our next jump
+          if (i + array[i] > distance) {
+              distance = i + array[i];
+              jump_origin = i;
+          }
+      }
+      // If we didn't find an index that jumps us further along the array we cannot reach the end, break.
+      if (jump_origin === -1) {
+          jumps = 0;
+          break;
+      }
+      last_jump_origin = jump_origin;
+      jumps++;
+  }
+
+  // Either we have 0 jumps or the minimum number of jumps needed to get to the end.
+  log_attempt_result(ns,contract_info,jumps)
+}
+
+function recur_through_triangle(ns, triangle , cache, level, index) {
+
+  // There are no more levels to look throgh, so return the value of this node of the triangle.
+  if (level == (triangle.length - 1)) {
+    return triangle[level][index]
+  }
+
+  // Initialize the cache level object.
+  if (
+    cache[level+1] === undefined
+  ){
+    cache[level+1] = {}
+  }
+  
+  // Set the cache value to the result of this function called on the two choices
+  if (cache[level+1][index] === undefined) {
+    cache[level+1][index] = recur_through_triangle(ns, triangle, cache, level+1, index)
+  }
+  if (cache[level+1][index+1] === undefined) {
+    cache[level+1][index+1] = recur_through_triangle(ns, triangle, cache, level+1, index+1)
+  }
+
+  // Return the lesser value of the two cached values.
+  return (cache[level+1][index] > cache[level+1][index+1] ? cache[level+1][index+1] : cache[level+1][index]) + triangle[level][index]
+}
+
+/**
+ * @param {NS} ns 
+ * @param {Object} contract_info 
+ */
+function solve_mpsiat_cct(ns, contract_info) {
+  let array = contract_info.contract_data
+
+  let result = recur_through_triangle(ns, array, {}, 0, 0)
+  
+  // Recurring through the triangle should have given us the shortest path.
+  log_attempt_result(ns, contract_info, result)
+}
+
+function factorial(start) {
+  if (
+      start == 0
+  ||  start == 1
+  ) {
+    return 1
+  }
+  if (start < 0) return 0
+  return start * factorial(start-1)
+}
+
+/**
+ * @param {NS} ns 
+ * @param {Object} contract_info 
+ */
+function solve_upiag1_cct(ns, contract_info) {
+  let data = contract_info.contract_data
+
+  let x = data[0]
+  let y = data[1]
+
+  let top = factorial(x+y-2)
+  let bot = factorial(x-1) * factorial(y-1)
+
+  log_attempt_result(ns, contract_info, top/bot)
+}
+
+/**
+ * @param {NS} ns 
+ * @param {Object} contract_info 
+ */
+function solve_upiag2_cct(ns, contract_info) {
+  let array = contract_info.contract_data
+
+  for (let y = 0; y < array.length; y++) {
+    for (let x = 0; x < array[0].length; x++) {
+      // This cell is an Obstacle. No Paths can pass through it
+      // so we set it to Zero.
+      if (array[y][x] == 1) {
+        array[y][x] = 0
+      }
+      // We are at the Origin. If the Origin is not an obstacle
+      // we set it as One.
+      else if (y == 0 && x == 0) {
+        array[y][x] = 1
+      }
+      // Neither Origin nor Obstacle, paths that pass through this cell
+      // are equal to the sum of the paths that pass through the cell
+      // above or to the left of this cell.
+      else {
+        if (y > 0) array[y][x] = array[y][x] + array[y-1][x]
+        if (x > 0) array[y][x] = array[y][x] + array[y][x-1]
+      }
+    }
+  }
+
+  // Since a cells contents will now be eqaul to the number of paths
+  // that pass through it. Our answer should be in the bottom right cell
+  // of the array.
+  log_attempt_result(ns, contract_info, array[array.length-1][array[0].length-1])
+}
+
+/**
+ * 
+ * @param {import("../../.").NS} ns 
+ * @param {Object} contract_info 
+ */
+function solve_e1cc_cct(ns, contract_info) {
+  /** @type {string} */
+  let string = contract_info.contract_data[0]
+  let shift  = contract_info.contract_data[1]
+  let result = ""
+  for (let char of string) {
+    if (char === " ") {
+      result = result + " "
+    }
+    else {
+      // "A" is 65, so remove that, the shift by the shift parameter (bound by the 26 letters)
+      // -1 % 26 is 25, which is why it works.
+      result = result + String.fromCharCode(((char.charCodeAt(0) - (65 + shift) + 26) % 26) + 65)
+    }
+  }
+  log_attempt_result(ns, contract_info, result)
+}
+
+/**
+ * 
+ * @param {import("../../.").NS} ns 
+ * @param {Object} contract_info 
+ */
+function solve_e2vc_cct(ns, contract_info) {
+  /** @type {string} */
+  let string = contract_info.contract_data[0]
+  /** @type {string} */
+  let pass   = contract_info.contract_data[1]
+
+  let result = ""
+  let cnt = 0
+  for (let char of string) {
+    let shift = (pass[cnt % pass.length].charCodeAt(0) - 65) * -1
+    result = result + String.fromCharCode(((char.charCodeAt(0) - (65 + shift) + 26) % 26) + 65)
+    cnt++
+  }
+  log_attempt_result(ns, contract_info, result)
+}
+
+function solve_spiag_cct(ns, contract_info) {
+  /** @type {number[][]} */
+  let grid = contract_info.contract_data
+  let height = grid.length
+  let width  = grid[0].length
+
+  function valid(y,x){
+    return y >= 0 && y < height && x >= 0 && x < width
+  }
+
+  grid.forEach(
+    function(array) {
+      array.forEach(
+        function(value, index, array) {
+          if(value == 1) {
+            array[index] = Infinity
+          }
+        }
+      )
+    }
+  )
+
+  let result = ""
+  if (
+      grid[0][0] === Infinity
+  ||  grid[height-1][width-1] === Infinity
+  ) {
+    ns.tprint("No Path Possible")
+    result = ""
+  }
+  else {
+    let queue = [[0,0]]
+    while (queue.length > 0) {
+      let [y,x] = queue.shift()
+      if (y == 0 && x == 0) {
+        grid[0][0] = 1
+      }
+      if (valid(y-1,x) && grid[y-1][x] == 0) {queue.push([y-1,x]); grid[y-1][x] = grid[y][x]+1;} // Check Up
+      if (valid(y+1,x) && grid[y+1][x] == 0) {queue.push([y+1,x]); grid[y+1][x] = grid[y][x]+1;} // Check Down
+      if (valid(y,x-1) && grid[y][x-1] == 0) {queue.push([y,x-1]); grid[y][x-1] = grid[y][x]+1;} // Check Left
+      if (valid(y,x+1) && grid[y][x+1] == 0) {queue.push([y,x+1]); grid[y][x+1] = grid[y][x]+1;} // Check Right
+    }
+    //ns.tprint("Grid:\n" + grid);
+    if (grid[height-1][width-1] === 0) {
+      result = ""
+    }
+    else {
+      let y = height-1
+      let x = width-1
+      while (!(y==0 && x==0)) {
+        //ns.tprint("Grid["+y+"]["+x+"]="+grid[y][x])
+        if      (valid(y-1,x) && grid[y-1][x] < grid[y][x]) {result = "D" + result; y = y-1;} // Check Up
+        else if (valid(y+1,x) && grid[y+1][x] < grid[y][x]) {result = "U" + result; y = y+1;} // Check Down
+        else if (valid(y,x-1) && grid[y][x-1] < grid[y][x]) {result = "R" + result; x = x-1;} // Check Left
+        else if (valid(y,x+1) && grid[y][x+1] < grid[y][x]) {result = "L" + result; x = x+1;} // Check Right
+        else {ns.tprint("This shouldn't happen"); break;}
+      }
+    }
+  }
+
+  //ns.tprint("Result: " + result)
+  log_attempt_result(ns, contract_info, result)
+}
+
+/**
+ * 
+ * @param {import("../../.".NS)} ns 
+ * @param {Object} contract_info 
+ */
+function solve_moi_cct(ns, contract_info) {
+  /** @type {number[][]} */
+  let intervals = contract_info.contract_data
+
+  // let string = ""
+  // for (let interval of intervals) {
+  //   if (!(string === "")) { string = string + ","}
+  //   string = string + "[" + interval[0] + "," + interval[1] + "]"
+  // }
+  // ns.tprint("Intervals: " + string)
+
+  intervals.sort(
+    // Negative Result means a before b
+    // Zero Result means no change
+    // Positive Result means b before a
+    function(a,b) {
+      if(a[0] < b[0]) return -1
+      if(a[0] > b[0]) return +1
+      else return 0
+    }
+  )
+  // string = ""
+  // for (let interval of intervals) {
+  //   if (!(string === "")) { string = string + ","}
+  //   string = string + "[" + interval[0] + "," + interval[1] + "]"
+  // }
+  // ns.tprint("Sorted: " + string)
+
+  let result = [intervals.shift()]
+  while (intervals.length > 0) {
+    let to_merge = intervals.shift()
+    if(
+        to_merge[0] >= result[result.length-1][0]
+    &&  to_merge[0] <= result[result.length-1][1]
+    ) {
+      if(to_merge[1] > result[result.length-1][1]) {
+        result[result.length-1][1] = to_merge[1]
+      }
+    }
+    else {
+      result.push(to_merge)
+    }
+  }
+  
+  let string = ""
+  for (let interval of result) {
+    if (!(string === "")) { string = string + ","}
+    string = string + "[" + interval[0] + "," + interval[1] + "]"
+  }
+  // ns.tprint("Merged: " + string)
+
+  // Needs to be returned as a string, apparently.
+  log_attempt_result(ns, contract_info, string)
+}
 
 /** @param {NS} ns */
 export async function main(ns) {
-  const UPDATE_HANDLER = ns.getPortHandle(4)
   const arg_flags = ns.flags([ 
-    ["server",""],
     ["contract_info",""]
   ])
 
@@ -215,15 +535,15 @@ export async function main(ns) {
   let contract_data = contract_info.contract_data
   let contract_attempts = contract_info.contract_attempts
 
-  ns.tprint(
-    "\n"
-  + "Server: " + contract_server + "\n"
-  + "File: " + contract_file + "\n"
-  + "Type: " + contract_type + "\n"
-  + "Data: " + JSON.stringify(contract_data) + ", TypeOf: " + typeof contract_data + "\n"
-  + "Attempts: " + contract_attempts + "\n"
-  + "Description: \n" + ns.codingcontract.getDescription(contract_file,contract_server)
-  )
+  // ns.tprint(
+  //   "\n"
+  // + "Server: " + contract_server + "\n"
+  // + "File: " + contract_file + "\n"
+  // + "Type: " + contract_type + "\n"
+  // + "Data: " + JSON.stringify(contract_data) + ", TypeOf: " + typeof contract_data + "\n"
+  // + "Attempts: " + contract_attempts + "\n"
+  // + "Description: \n" + ns.codingcontract.getDescription(contract_file,contract_server)
+  // )
 
   switch (contract_info.contract_type) {
     case "Find Largest Prime Factor":
@@ -240,26 +560,13 @@ export async function main(ns) {
       solve_sm_cct(ns,contract_info)
       break
     case "Array Jumping Game":
-      // Server: home
-      // File: contract-128693.cct
-      // Type: Array Jumping Game
-      // Data: [0,10,5,1,4,10,0,0,8,5,10,9,10,5,5,5,10,10,0,8,8,6], TypeOf: object
-      // Attempts: 1
-      // Description: 
-      // You are given the following array of integers:
-      
-      //  0,10,5,1,4,10,0,0,8,5,10,9,10,5,5,5,10,10,0,8,8,6
-      
-      //  Each element in the array represents your MAXIMUM jump length at that position. This means that if you are at position i and your maximum jump length is n, you can jump to any position from i to i+n. 
-      
-      // Assuming you are initially positioned at the start of the array, determine whether you are able to reach the last index.
-      
-      //  Your answer should be submitted as 1 or 0, representing true and false respectively
       solve_ajg_cct(ns,contract_info)
       break
     case "Array Jumping Game II":
+      solve_ajg2_cct(ns,contract_info)
       break
     case "Merge Overlapping Intervals":
+      solve_moi_cct(ns,contract_info)
       break
     case "Generate IP Addresses":
       break
@@ -272,12 +579,16 @@ export async function main(ns) {
     case "Algorithmic Stock Trader IV":
       break
     case "Minimum Path Sum in a Triangle":
+      solve_mpsiat_cct(ns,contract_info)
       break
     case "Unique Paths in a Grid I":
+      solve_upiag1_cct(ns,contract_info)
       break
     case "Unique Paths in a Grid II":
+      solve_upiag2_cct(ns, contract_info)
       break
     case "Shortest Path in a Grid":
+      solve_spiag_cct(ns, contract_info)
       break
     case "Sanitize Parentheses in Expression":
       break
@@ -296,24 +607,10 @@ export async function main(ns) {
     case "Compression III: LZ Compression":
       break
     case "Encryption I: Caesar Cipher":
+      solve_e1cc_cct(ns, contract_info)
       break
     case "Encryption II: Vigenère Cipher":
+      solve_e2vc_cct(ns, contract_info)
       break
-  }
-  
-  let update_message = {
-    "action": "update_info",
-    "update_info": {
-      "server": arg_flags.server,
-      "freed_ram": 1.7 * arg_flags.threads,
-      "pid_to_remove": ns.pid
-    }
-  }
-
-  while(UPDATE_HANDLER.full()) {
-    await ns.sleep(1000 + ((ns.pid * 10) % 1000))
-  }
-  while (!UPDATE_HANDLER.tryWrite(JSON.stringify(update_message))){
-    await ns.sleep(1000 + ((ns.pid * 10) % 1000))
   }
 }

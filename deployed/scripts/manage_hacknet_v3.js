@@ -7,14 +7,6 @@ let prior_tail_height = 0
 
 /**
  * @param {NS} ns
- * @param {number} hacknet_node_money_mult
- */
-function gain_per_level(ns, hacknet_node_money_mult) {
-  return 1.5 * ns.getPlayer().mults.hacknet_node_money * hacknet_node_money_mult
-}
-
-/**
- * @param {NS} ns
  * @param {NodeStats[]} stats_array 
  * @returns 
  */
@@ -53,12 +45,12 @@ function format_stats(ns, stats_array) {
   }
 
   let width_per_node = 166
-  let height_per_row = 390
-  let row_cnt = Math.floor(node_cnt / row_length)
-  let tail_width = 0
+  let height_per_row = 185
+  let row_cnt = Math.floor((node_cnt-1)/ row_length) + 1
+  let tail_width = 996
   let tail_height = 0
-  tail_width  = width_per_node * ((node_cnt > 5) ? 6 : (node_cnt + 1))
-  tail_height = (height_per_row * row_cnt) + 75// Additional information Rows.
+  //tail_width  = width_per_node * ((node_cnt > 5) ? 6 : (node_cnt + 1))
+  tail_height = (height_per_row * row_cnt) + 125// Additional information Rows.
   let resize = false
   if (tail_height != prior_tail_height) {
     prior_tail_height = tail_height
@@ -94,6 +86,23 @@ function decide_target_of_hashes(ns) {
       let server_a = ns.getServer(a)
       let server_b = ns.getServer(b)
 
+      // Compare Hash Upgrades required to get to Minimum Security
+      let server_a_min_diff_upg_needed = Math.ceil(Math.log(1/server_a.minDifficulty) / Math.log(0.98))
+      let server_b_min_diff_upg_needed = Math.ceil(Math.log(1/server_b.minDifficulty) / Math.log(0.98))
+
+      let server_min_diff_upg_factor = Math.sign(server_a_min_diff_upg_needed - server_b_min_diff_upg_needed) * 100
+
+      // Compare Hash Upgrades required to get to 10 Trillion
+      let server_a_max_money_upg_needed = Math.ceil(Math.log(1e13/server_a.moneyMax) / Math.log(1.02))
+      let server_b_max_money_upg_needed = Math.ceil(Math.log(1e13/server_b.moneyMax) / Math.log(1.02))
+
+      let server_max_money_upg_factor = Math.sign(server_a_max_money_upg_needed - server_b_max_money_upg_needed) * 100
+  
+      server_a.minDifficulty  = 1
+      server_a.hackDifficulty = 1
+      server_b.minDifficulty  = 1
+      server_b.hackDifficulty = 1
+      // 
       let server_money_max_factor = 0
       // Server A is greater than ten trillion, Server B is less than ten trillion, push B up the rankings.
       if (
@@ -115,18 +124,11 @@ function decide_target_of_hashes(ns) {
       // Servers are both less than ten trillion, order them so that the larger one is pushed up the rankings.
       // Is true.
       else {
-        server_money_max_factor = Math.sign(server_b.moneyMax - server_a.moneyMax) * 100
+        server_money_max_factor = Math.sign(
+          server_b.moneyMax * ns.formulas.hacking.hackPercent(server_b, player) * ns.formulas.hacking.hackChance(server_b, player)
+        - server_a.moneyMax * ns.formulas.hacking.hackPercent(server_a, player) * ns.formulas.hacking.hackChance(server_a, player)
+        ) * 100
       }
-
-      let server_a_min_diff_upg_needed = Math.ceil(Math.log(1/server_a.minDifficulty) / Math.log(0.98))
-      let server_b_min_diff_upg_needed = Math.ceil(Math.log(1/server_b.minDifficulty) / Math.log(0.98))
-
-      let server_min_diff_upg_factor = Math.sign(server_a_min_diff_upg_needed - server_b_min_diff_upg_needed) * 100
-
-      let server_a_max_money_upg_needed = Math.ceil(Math.log(1e13/server_a.moneyMax) / Math.log(1.02))
-      let server_b_max_money_upg_needed = Math.ceil(Math.log(1e13/server_b.moneyMax) / Math.log(1.02))
-
-      let server_max_money_upg_factor = Math.sign(server_a_max_money_upg_needed - server_b_max_money_upg_needed) * 100
 
       return Math.sign(server_money_max_factor + server_min_diff_upg_factor + server_max_money_upg_factor)
     }
@@ -134,7 +136,7 @@ function decide_target_of_hashes(ns) {
   return servers[0]
 }
 
-/** @param {NS} ns */
+/** @param {import("../../.").NS} ns */
 export async function main(ns) {
   ns.disableLog("sleep")
   ns.disableLog("getServerMoneyAvailable")
@@ -152,6 +154,9 @@ export async function main(ns) {
     await ns.sleep(50)
   }
 
+  prior_tail_width = 0
+  prior_tail_height = 0
+
   let control_params = JSON.parse(CONTROL_PARAMETERS.peek())
   let bitnode_mults = JSON.parse(BITNODE_MULTS_HANDLER.peek())
 
@@ -159,7 +164,10 @@ export async function main(ns) {
   let calc_only = control_params.hacknet.calc_only
   let threshold = control_params.hacknet.threshold * threshold_mult
   let cost_mod  = control_params.hacknet.cost_mod
-  let hacknet_node_money_mult = bitnode_mults["HacknetNodeMoney"]
+  let p = ns.getPlayer()    
+  let player_mults = p.mults
+  let hacknet_node_money_mult = bitnode_mults["HacknetNodeMoney"] * player_mults.hacknet_node_money
+  let hacking_script_money_mult = bitnode_mults["ScriptHackMoney"] * player_mults.hacking_money
 
   let one_hash_worth = 1e6 / 4
   let prev_choice = " "
@@ -182,10 +190,16 @@ export async function main(ns) {
      * Always the $ value of our Hacknet Production
      */
     let total_production = 0
+    let max_level = 1
+    let max_ram = 1
+    let max_cores = 1
     if (ns.hacknet.numNodes() > 0) {
       for (let i = 0; i < ns.hacknet.numNodes(); i++) {
         hacknet_stat_array.push(ns.hacknet.getNodeStats(i))
         total_production += hacknet_stat_array[i].production
+        max_level = (max_level < hacknet_stat_array[i].level) ? hacknet_stat_array[i].level : max_level
+        max_ram   = (max_ram   < hacknet_stat_array[i].ram  ) ? hacknet_stat_array[i].ram   : max_ram
+        max_cores = (max_cores < hacknet_stat_array[i].cores) ? hacknet_stat_array[i].cores : max_cores
       }
       if (!(hacknet_stat_array[0].cache === undefined)) {
         // Hashes are generated
@@ -196,52 +210,96 @@ export async function main(ns) {
     let recent_script_income  = ns.getTotalScriptIncome()[0] // 0 is $/s of active scripts, 1 is $/s of scripts run since last installing Augs.
     let recent_hacknet_income = total_production
 
-    if (hash_server_target === undefined) {
-      hash_server_target = decide_target_of_hashes(ns)
+    let new_target = decide_target_of_hashes(ns)
+    if (
+        hash_server_target === undefined
+    ||  hash_server_target != new_target
+    ) {
+      hash_server_target = new_target
     }
     let server_obj = ns.getServer(hash_server_target)
-    let min_diff_upg_needed = Math.ceil(Math.log(1/server_obj.minDifficulty) / Math.log(0.98))
+    let min_diff_upg_needed = Math.ceil(Math.log(5/server_obj.minDifficulty) / Math.log(0.98))
     let max_money_upg_needed = Math.ceil(Math.log(1e13/server_obj.moneyMax) / Math.log(1.02))
+    let time_to_buy_a = total_production == 0 ? Infinity : ns.hacknet.hashCost("Reduce Minimum Security", min_diff_upg_needed) / (total_production / one_hash_worth)
+    let time_to_buy_b = total_production == 0 ? Infinity : ns.hacknet.hashCost("Increase Maximum Money", max_money_upg_needed) / (total_production / one_hash_worth)
+    
+    
+    let update = {
+      "action": "update_hash_target"
+     ,"target": hash_server_target
+     ,"time"  : total_production == 0 ? Infinity : time_to_buy_a + time_to_buy_b
+    }
+    while(!UPDATE_HANDLER.tryWrite(JSON.stringify(update))){
+      await ns.sleep(10)
+    }
 
-    // If we are making more money through hacking scripts than hacknet, improve our hacknet
+    best_choice = "N"
+    best_choice_idx = -1
+    //let gain = gain_per_level(ns, hacknet_node_money_mult)
+    let gain = ns.formulas.hacknetServers.hashGainRate(1,0,1,1,hacknet_node_money_mult) * one_hash_worth
+    gain_cost = ns.hacknet.getPurchaseNodeCost()
+    if (ns.hacknet.numNodes() > 0) {
+      gain = total_production / ns.hacknet.numNodes()
+      gain_cost = ns.hacknet.getPurchaseNodeCost()
+                + ns.formulas.hacknetServers.levelUpgradeCost(1, max_level - 1, player_mults.hacknet_node_level_cost)
+                + ns.formulas.hacknetServers.ramUpgradeCost(1,(Math.log(max_ram)/Math.log(2)),player_mults.hacknet_node_ram_cost)
+                + ns.formulas.hacknetServers.coreUpgradeCost(1,max_cores - 1, player_mults.hacknet_node_core_cost)
+    }  
+    gain_over_cost = gain / gain_cost
+
+    let server_id = 0
+    for (let server of hacknet_stat_array) {
+
+      let current_hash = ns.formulas.hacknetServers.hashGainRate(server.level  , 0, server.ram  , server.cores  , hacknet_node_money_mult)
+      let level_gain   = ns.formulas.hacknetServers.hashGainRate(server.level+1, 0, server.ram  , server.cores  , hacknet_node_money_mult) - current_hash
+      let ram_gain     = ns.formulas.hacknetServers.hashGainRate(server.level  , 0, server.ram*2, server.cores  , hacknet_node_money_mult) - current_hash
+      let core_gain    = ns.formulas.hacknetServers.hashGainRate(server.level  , 0, server.ram  , server.cores+1, hacknet_node_money_mult) - current_hash
+
+      if (((level_gain * one_hash_worth) / ns.hacknet.getLevelUpgradeCost(server_id)) > gain_over_cost) {
+        gain_over_cost = (level_gain * one_hash_worth) / ns.hacknet.getLevelUpgradeCost(server_id)
+        gain_cost = ns.hacknet.getLevelUpgradeCost(server_id)
+        best_choice = "L"
+        best_choice_idx = server_id
+      }
+      if (((ram_gain * one_hash_worth) / ns.hacknet.getRamUpgradeCost(server_id)) > gain_over_cost) {
+        gain_over_cost = (ram_gain * one_hash_worth) / ns.hacknet.getRamUpgradeCost(server_id)
+        gain_cost = ns.hacknet.getRamUpgradeCost(server_id)
+        best_choice = "R"
+        best_choice_idx = server_id
+      }
+      if (((core_gain * one_hash_worth) / ns.hacknet.getCoreUpgradeCost(server_id)) > gain_over_cost) {
+        gain_over_cost = (core_gain * one_hash_worth) / ns.hacknet.getCoreUpgradeCost(server_id)
+        gain_cost = ns.hacknet.getCoreUpgradeCost(server_id)
+        best_choice = "C"
+        best_choice_idx = server_id
+      }
+      server_id++
+    }
+
+    let focus_upgrades = false
     if (
         recent_script_income > recent_hacknet_income
-    &&  prev_gain_ratio > threshold
-    ) { 
-      let best_choice = "N"
-      let best_choice_idx = -1
-      let gain_cost = gain_per_level(ns, hacknet_node_money_mult)   
-      if (ns.hacknet.numNodes() > 0) {
-        gain_cost = total_production / ns.hacknet.numNodes()
-      }  
-      let gain_over_cost = gain_cost / ns.hacknet.getPurchaseNodeCost()
+    &&  (time_to_buy_a + time_to_buy_b) < (1/threshold)
+    ) {
+      //This means we have either: 
+      // A) managed to improve a server to the point it outperforms our hacknet production
+      //OR
+      // B) Hacking is just better than hacknet.
+      //Either way we should "Win More" by improving scripts further using hashes. We will
+      //then have additional money to spend on Hacknet without using our hashes to buy money.
+      focus_upgrades = true
+    }
 
-      for (let server of hacknet_stat_array) {
-        let p = ns.getPlayer()    
-
-        let current_hash = ns.formulas.hacknetServers.hashGainRate(server.level  , 0, server.ram  , server.cores  , p.mults.hacknet_node_money)
-        let level_gain   = ns.formulas.hacknetServers.hashGainRate(server.level+1, 0, server.ram  , server.cores  , p.mults.hacknet_node_money) - current_hash
-        let ram_gain     = ns.formulas.hacknetServers.hashGainRate(server.level  , 0, server.ram*2, server.cores  , p.mults.hacknet_node_money) - current_hash
-        let core_gain    = ns.formulas.hacknetServers.hashGainRate(server.level  , 0, server.ram  , server.cores+1, p.mults.hacknet_node_money) - current_hash
-
-        if (((level_gain * one_hash_worth) / ns.hacknet.getLevelUpgradeCost(i)) > gain_over_cost) {
-          gain_over_cost = (level_gain * one_hash_worth) / ns.hacknet.getLevelUpgradeCost(i)
-          gain_cost = ns.hacknet.getLevelUpgradeCost(i)
-          best_choice = "L"
-          best_choice_idx = i
-        }
-        if (((ram_gain * one_hash_worth) / ns.hacknet.getRamUpgradeCost(i)) > gain_over_cost) {
-          gain_over_cost = (ram_gain * one_hash_worth) / ns.hacknet.getRamUpgradeCost(i)
-          gain_cost = ns.hacknet.getRamUpgradeCost(i)
-          best_choice = "R"
-          best_choice_idx = i
-        }
-        if (((core_gain * one_hash_worth) / ns.hacknet.getCoreUpgradeCost(i)) > gain_over_cost) {
-          gain_over_cost = (core_gain * one_hash_worth) / ns.hacknet.getCoreUpgradeCost(i)
-          gain_cost = ns.hacknet.getCoreUpgradeCost(i)
-          best_choice = "C"
-          best_choice_idx = i
-        }
+    // If our primary income source will be hacknet due to BN and Player
+    // modifiers: Improve our HackNet
+    if (
+        !focus_upgrades
+    ||  (   (hacknet_node_money_mult * 0.25) > hacking_script_money_mult
+         && (time_to_buy_a + time_to_buy_b) > (1/threshold))
+    //&&  prev_gain_ratio > threshold
+    ) {
+      if (ns.hacknet.numHashes() > 4) {
+        ns.hacknet.spendHashes("Sell for Money",undefined,Math.floor(ns.hacknet.numHashes()/4))
       }
 
       // Best Return on Investment Action chosen. Now Do it if we have the money and aren't just calculating the best action.
@@ -270,6 +328,29 @@ export async function main(ns) {
         prev_choice_idx = best_choice_idx
         prev_gain_ratio = gain_over_cost
       }
+    }
+    else if (
+      (ns.getServerMoneyAvailable("home") > (cost_mod * gain_cost))
+    &&  !calc_only
+    ) {
+      //ns.print("Performing Action")
+      switch (best_choice) {
+        case "N":
+          ns.hacknet.purchaseNode()
+          break
+        case "L":
+          ns.hacknet.upgradeLevel(best_choice_idx)
+          break
+        case "R":
+          ns.hacknet.upgradeRam(best_choice_idx)
+          break
+        case "C":
+          ns.hacknet.upgradeCore(best_choice_idx)
+          break
+      }
+      prev_choice = best_choice
+      prev_choice_idx = best_choice_idx
+      prev_gain_ratio = gain_over_cost
     } // If we cannot purchase server upgrades due to a lack of hash capacity, upgrade the capacity
     else if (
         ns.hacknet.hashCost("Reduce Minimum Security", 1) > ns.hacknet.hashCapacity()
@@ -277,13 +358,20 @@ export async function main(ns) {
     ) {
       let minimum_cache_cost = Infinity
       let minimum_cache_cost_idx = -1
+      best_choice = "H"
+      best_choice_idx = "-1"
+
       for (let server in hacknet_stat_array) {
         if (ns.hacknet.getCacheUpgradeCost(server) < minimum_cache_cost) {
           minimum_cache_cost = ns.hacknet.getCacheUpgradeCost(server)
           minimum_cache_cost_idx = server
+          best_choice_idx = server
         }
       }
-      if (minimum_cache_cost_idx != -1) {
+      if (ns.hacknet.numHashes() > 4) {
+        ns.hacknet.spendHashes("Sell for Money",undefined,Math.floor(ns.hacknet.numHashes()/4))
+      }
+      if (ns.getServerMoneyAvailable("home") > (cost_mod * minimum_cache_cost) && minimum_cache_cost_idx != -1) {
         ns.hacknet.upgradeCache(minimum_cache_cost_idx)
         prev_choice = "H"
         prev_choice_idx = minimum_cache_cost_idx
@@ -291,22 +379,31 @@ export async function main(ns) {
       }
     }// If we are making more money through hacknet than hacking scripts, improve our hacking scripts.
     else if (
-        recent_script_income < recent_hacknet_income
+        focus_upgrades
     &&  !(hash_server_target === undefined)
     ) {
+      best_choice = "U"
+      best_choice_idx = -1
       if (
           min_diff_upg_needed > 0
-      &&  ns.hacknet.hashCost("Reduce Minimum Security", 1) < ns.hacknet.numHashes()
+      &&  ns.hacknet.hashCost("Reduce Minimum Security", 1) <= ns.hacknet.numHashes()
       ) {
+        prev_choice = "S"
+        prev_choice_idx = -1
         ns.hacknet.spendHashes("Reduce Minimum Security", hash_server_target, 1)
       }
 
       if (
           max_money_upg_needed > 0
-      &&  ns.hacknet.hashCost("Increase Maximum Money", 1) < ns.hacknet.numHashes()
+      &&  ns.hacknet.hashCost("Increase Maximum Money", 1) <= ns.hacknet.numHashes()
       ) {
+        prev_choice = "M"
+        prev_choice_idx = -1
         ns.hacknet.spendHashes("Increase Maximum Money", hash_server_target, 1)
       }
+    }
+    else {
+      ns.print("You fucked up.")
     }
 
     ns.clearLog()
@@ -314,11 +411,12 @@ export async function main(ns) {
         "Previous Action:  " + prev_choice + " on " + prev_choice_idx.toString().padStart(2) + " with RoI Time: " + ns.formatNumber(1/prev_gain_ratio).padStart(8)
       + " | Hash Upgrade Target : " + hash_server_target + "\n"
       + "Planned Action :  " + best_choice + " on " + best_choice_idx.toString().padStart(2) + " with RoI Time: " + ns.formatNumber(1/gain_over_cost).padStart(8)
-      + " | Min Diff Upg Needed : " + min_diff_upg_needed + "\n"
+      + " | Min Diff Upg Needed : " + min_diff_upg_needed.toString().padStart(5)
+      + " Time To Buy: " + ns.formatNumber(time_to_buy_a).padStart(8) + "S\n"
       + "Cost of Action : " + ns.formatNumber(gain_cost).padStart(9) + " RoI Time Thr: " + ns.formatNumber(1/threshold).padStart(8)
-      + " | Max Money Upg Needed: " + max_money_upg_needed
-      // + "Base Level Gain: 1.5 * " + ns.getPlayer().mults.hacknet_node_money + " * " + bitnode_info["HacknetNodeMoney"] + " = "
-      // + 1.5 * ns.getPlayer().mults.hacknet_node_money * bitnode_info["HacknetNodeMoney"]
+      + " | Max Money Upg Needed: " + max_money_upg_needed.toString().padStart(5)
+      + " Time To Buy: " + ns.formatNumber(time_to_buy_b).padStart(8) + "S\n"
+      + "Hashes We Have: " + ns.formatNumber(ns.hacknet.numHashes()).padStart(8) + " | Hashes We Store: " + ns.hacknet.hashCapacity()
     )
     let table = format_stats(ns, hacknet_stat_array)
     ns.print(table)

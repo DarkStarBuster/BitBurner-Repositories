@@ -378,8 +378,8 @@ function display_all_bitnode_info(ns) {
   table_strings.fill("")
 
   let dflt_val = 1
-  let larger_colour = colourize(ns,COLOUR.RED, 9)
-  let smaller_colour = colourize(ns,COLOUR.GREEN, 9)
+  let larger_colour = colourize(COLOUR.RED, 9)
+  let smaller_colour = colourize(COLOUR.GREEN, 9)
 
   for (let i = 1; i <= MAX_NUM_BITNODES; i++) {
     for (let j = 1; j <= MAX_BITNODE_LEVEL; j++) {
@@ -390,13 +390,13 @@ function display_all_bitnode_info(ns) {
       bitnode_title =
         bitnode_title
       + (bitnode_title == "" ? "" : "|")
-      + colourize(ns,COLOUR.WHITE, 4) + bitnode.padStart(6) + " "
-      + colourize(ns,COLOUR.BLACK, 4)
+      + colourize(COLOUR.WHITE, 4) + bitnode.padStart(6) + " "
+      + colourize(COLOUR.BLACK, 4)
 
       for (let k = 0; k < keys.length; k++) {
         dflt_val = 1
-        larger_colour = colourize(ns,COLOUR.RED, 9)
-        smaller_colour = colourize(ns,COLOUR.GREEN, 9)
+        larger_colour = colourize(COLOUR.RED, 9)
+        smaller_colour = colourize(COLOUR.GREEN, 9)
         if (
             bitnode_mults[keys[k]].default != undefined
         &&  bitnode_mults[keys[k]].default != dflt_val
@@ -404,19 +404,19 @@ function display_all_bitnode_info(ns) {
           dflt_val = bitnode_mults[keys[k]].default
         }
         if (bitnode_mults[keys[k]].larger) {
-          larger_colour = colourize(ns,COLOUR.GREEN, 9)
-          smaller_colour = colourize(ns,COLOUR.RED, 9)
+          larger_colour = colourize(COLOUR.GREEN, 9)
+          smaller_colour = colourize(COLOUR.RED, 9)
         }
         table_strings[k] = 
           table_strings[k]                       // Previous String
         + (table_strings[k] == "" ? "" : "|")    // Seperator from Previous String if needed
-        + (bitnode_info[keys[k]] == dflt_val ? colourize(ns,COLOUR.YELLOW,9) : (bitnode_info[keys[k]] > dflt_val  ? larger_colour : smaller_colour))
+        + (bitnode_info[keys[k]] == dflt_val ? colourize(COLOUR.YELLOW,9) : (bitnode_info[keys[k]] > dflt_val  ? larger_colour : smaller_colour))
         //+ " " + keys[k].padEnd(max_key_length) + ": "
         + (keys[k] == "StaneksGiftExtraSize" ?
             String( (bitnode_info[keys[k]] < 0 ? "" : "+") + bitnode_info[keys[k]]).padStart(6)
           : ns.formatPercent(bitnode_info[keys[k]] / dflt_val,0).padStart(6)
           ) + " "
-        + colourize(ns,COLOUR.BLACK, 4) //+ "|"
+        + colourize(COLOUR.BLACK, 4) //+ "|"
       }
     }
   }
@@ -424,9 +424,9 @@ function display_all_bitnode_info(ns) {
   let table = ""
   for (let i = 0; i < table_strings.length; i++) {
     table = table
-    + colourize(ns,COLOUR.BLACK, 4) + "║ "
-    + colourize(ns,COLOUR.WHITE, 4) + keys[i].padEnd(max_key_length)
-    + colourize(ns,COLOUR.BLACK, 4) + " ║"
+    + colourize(COLOUR.BLACK, 4) + "║ "
+    + colourize(COLOUR.WHITE, 4) + keys[i].padEnd(max_key_length)
+    + colourize(COLOUR.BLACK, 4) + " ║"
     + table_strings[i] + "║"
     + "\n"
   }
@@ -440,10 +440,10 @@ function display_all_bitnode_info(ns) {
 
   let title = "All Bitnode Modifiers"
   ns.tprint("\n"
-  + colourize(ns,COLOUR.BLACK, 4) + "╔═"
-  + colourize(ns,COLOUR.WHITE, 4) + title
-  + colourize(ns,COLOUR.BLACK, 4) + "".padEnd(table_width - (title.length + 3), "═") + "╗\n"
-  + colourize(ns,COLOUR.BLACK, 4) + "║ " + "".padEnd(max_key_length) + " ║"
+  + colourize(COLOUR.BLACK, 4) + "╔═"
+  + colourize(COLOUR.WHITE, 4) + title
+  + colourize(COLOUR.BLACK, 4) + "".padEnd(table_width - (title.length + 3), "═") + "╗\n"
+  + colourize(COLOUR.BLACK, 4) + "║ " + "".padEnd(max_key_length) + " ║"
   + bitnode_title + "║\n"
   + "╠" + "".padEnd(table_width - 2, "═") + "╣\n"
   + table
@@ -479,13 +479,13 @@ function display_bitnode_info(ns) {
   }
 
   let dflt_val = 1
-  let larger_colour = colourize(ns,COLOUR.RED,9)
-  let smaller_colour = colourize(ns,COLOUR.GREEN,9)
+  let larger_colour = colourize(COLOUR.RED,9)
+  let smaller_colour = colourize(COLOUR.GREEN,9)
 
   for (let i = 0; i < keys.length; i++) {
     dflt_val = 1
-    larger_colour = colourize(ns,COLOUR.RED,9)
-    smaller_colour = colourize(ns,COLOUR.GREEN,9)
+    larger_colour = colourize(COLOUR.RED,9)
+    smaller_colour = colourize(COLOUR.GREEN,9)
     if (
         bitnode_mults[keys[i]].default != undefined
     &&  bitnode_mults[keys[i]].default != dflt_val
@@ -493,19 +493,19 @@ function display_bitnode_info(ns) {
       dflt_val = bitnode_mults[keys[i]].default
     }
     if (bitnode_mults[keys[i]].larger) {
-      larger_colour = colourize(ns,COLOUR.GREEN,9)
-      smaller_colour = colourize(ns,COLOUR.RED,9)
+      larger_colour = colourize(COLOUR.GREEN,9)
+      smaller_colour = colourize(COLOUR.RED,9)
     }
     table_strings[i % table_length] = 
       table_strings[i % table_length]                       // Previous String
     + (table_strings[i % table_length] == "" ? "" : "|")    // Seperator from Previous String if needed
-    + (bitnode_info[keys[i]] == dflt_val ? colourize(ns,COLOUR.YELLOW,9) : (bitnode_info[keys[i]] > dflt_val  ? larger_colour : smaller_colour))
+    + (bitnode_info[keys[i]] == dflt_val ? colourize(COLOUR.YELLOW,9) : (bitnode_info[keys[i]] > dflt_val  ? larger_colour : smaller_colour))
     + " " + keys[i].padEnd(max_key_length) + ": "
     + (keys[i] == "StaneksGiftExtraSize" ?
         String("+" + bitnode_info[keys[i]]).padStart(5)
       : ns.formatPercent(bitnode_info[keys[i]] / dflt_val,0).padStart(5)
       ) + " "
-    + colourize(ns,COLOUR.BLACK,4)
+    + colourize(COLOUR.BLACK,4)
   }
 
   let table_width = 
@@ -514,15 +514,15 @@ function display_bitnode_info(ns) {
   + 9 // number of blankspace characters
   + 3 // Number of : characters
   + 15 // Number of characters devoted to percent values
-  let title_string = colourize(ns,COLOUR.BLACK,4) + "╔═" + colourize(ns,COLOUR.WHITE,4) + " BitNode Multipliers " + colourize(ns,COLOUR.BLACK,4) + String("").padEnd(table_width - (23 + 1),"═") + "╗"
+  let title_string = colourize(COLOUR.BLACK,4) + "╔═" + colourize(COLOUR.WHITE,4) + " BitNode Multipliers " + colourize(COLOUR.BLACK,4) + String("").padEnd(table_width - (23 + 1),"═") + "╗"
 
   ns.tprint(title_string)
   for (let string of table_strings) {
-    string = colourize(ns,COLOUR.BLACK,4) + "║" + string + "║"
+    string = colourize(COLOUR.BLACK,4) + "║" + string + "║"
     ns.tprint(string)
   }
 
-  let footer_string = colourize(ns,COLOUR.BLACK,4) + "╚" + String("").padEnd(table_width - 2,"═") + "╝"
+  let footer_string = colourize(COLOUR.BLACK,4) + "╚" + String("").padEnd(table_width - 2,"═") + "╝"
   ns.tprint(footer_string)
 
 }
@@ -558,7 +558,7 @@ function port_status(value) {
  * @param {string[]} servers
  * @param {string} server
  */
-function display_server_info(ns, servers, server) {
+async function display_server_info(ns, servers, server) {
 
   if (servers.indexOf(server) == -1) {
     ns.tprint("Invalid Server hostname passed.")
@@ -576,10 +576,10 @@ function display_server_info(ns, servers, server) {
   let rooted = bool_to_char(server_info.hasAdminRights)
   let backdoored = bool_to_char(server_info.backdoorInstalled)
 
-  rooted = (rooted == "+" ? colours.green : colours.red) + rooted + colours.default
-  backdoored = (backdoored == "+" ? colours.green : colours.red) + backdoored + colours.default
+  rooted = (rooted == "+" ? colourize(COLOUR.GREEN,9) : colourize(COLOUR.RED,9)) + rooted + colourize(COLOUR.DEFAULT)
+  backdoored = (backdoored == "+" ? colourize(COLOUR.GREEN,9) : colourize(COLOUR.RED,9)) + backdoored + colourize(COLOUR.DEFAULT)
   
-  let ports_needed = server_info.numOpenPortsRequired
+  let ports_needed = server_info.numOpenPortsRequired || 0
   let ports_opened = 0
   let ssh_status  = port_status(server_info.sshPortOpen)
   let ftp_status  = port_status(server_info.ftpPortOpen)
@@ -591,26 +591,26 @@ function display_server_info(ns, servers, server) {
   if (smtp_status=="Open") ports_opened += 1
   if (http_status=="Open") ports_opened += 1
   if (sql_status=="Open") ports_opened += 1
-  ssh_status  = pad_str("",6 - ssh_status.length ) + (ssh_status  == "Open" ? colours.green : colours.red) + ssh_status  + colours.default
-  ftp_status  = pad_str("",6 - ftp_status.length ) + (ftp_status  == "Open" ? colours.green : colours.red) + ftp_status  + colours.default
-  smtp_status = pad_str("",6 - smtp_status.length) + (smtp_status == "Open" ? colours.green : colours.red) + smtp_status + colours.default
-  http_status = pad_str("",6 - http_status.length) + (http_status == "Open" ? colours.green : colours.red) + http_status + colours.default
-  sql_status  = pad_str("",6 - sql_status.length ) + (sql_status  == "Open" ? colours.green : colours.red) + sql_status  + colours.default
+  ssh_status  = pad_str("",6 - ssh_status.length ) + (ssh_status  == "Open" ? colourize(COLOUR.GREEN,9) : colourize(COLOUR.RED,9)) + ssh_status  + colourize(COLOUR.DEFAULT)
+  ftp_status  = pad_str("",6 - ftp_status.length ) + (ftp_status  == "Open" ? colourize(COLOUR.GREEN,9) : colourize(COLOUR.RED,9)) + ftp_status  + colourize(COLOUR.DEFAULT)
+  smtp_status = pad_str("",6 - smtp_status.length) + (smtp_status == "Open" ? colourize(COLOUR.GREEN,9) : colourize(COLOUR.RED,9)) + smtp_status + colourize(COLOUR.DEFAULT)
+  http_status = pad_str("",6 - http_status.length) + (http_status == "Open" ? colourize(COLOUR.GREEN,9) : colourize(COLOUR.RED,9)) + http_status + colourize(COLOUR.DEFAULT)
+  sql_status  = pad_str("",6 - sql_status.length ) + (sql_status  == "Open" ? colourize(COLOUR.GREEN,9) : colourize(COLOUR.RED,9)) + sql_status  + colourize(COLOUR.DEFAULT)
   
-  let curr_diff = pad_str(server_info.hackDifficulty.toFixed(2),6)
-  let min_diff = pad_str(server_info.minDifficulty.toFixed(2),6)
+  let curr_diff = pad_str((server_info.hackDifficulty || 0).toFixed(2),6)
+  let min_diff = pad_str((server_info.minDifficulty || 0).toFixed(2),6)
   let free_ram = pad_str(ns.formatRam(server_info.maxRam - server_info.ramUsed),8)
   let max_ram = pad_str(ns.formatRam(server_info.maxRam),8)
 
-  let money = server_info.moneyAvailable
-  let max_money = server_info.moneyMax
+  let money = server_info.moneyAvailable || 0
+  let max_money = server_info.moneyMax || 0
   let money_string = ""
 
   if (max_money == 0) {
     money_string = pad_str("Not Applicable",16)
   }
   else {
-    money_string = pad_str("$" + ns.formatNumber(money) + " (" + ns.formatPercent(money/max_money,0) + ")",16)
+    money_string = pad_str("$" + ns.formatNumber(money) + " (" + ns.formatPercent((money)/(max_money),0) + ")",16)
   }
 
   let hack_level = pad_str(server_info.requiredHackingSkill,7)
@@ -632,7 +632,7 @@ function display_server_info(ns, servers, server) {
 
   ns.tprint(
     "\n"
-  + "╔═" + "".padStart(max_name_length - server.length,"═") + colours.green + server + colours.default + "═╗\n"
+  + "╔═" + "".padStart(max_name_length - server.length,"═") + colourize(COLOUR.GREEN,9) + server + colourize(COLOUR.DEFAULT) + "═╗\n"
   + "╠═Info═════════╦═Stats═════════════════════╗\n"
   + "║ Rooted:    " + rooted + " ║ Difficulty: " + curr_diff + "/" + min_diff + " ║\n"
   + "║ Backdoor:  " + backdoored + " ║ Ram:    " + free_ram + "/" + max_ram + " ║\n"
@@ -644,6 +644,41 @@ function display_server_info(ns, servers, server) {
   + "║ SQL:  "+ sql_status +" ║\n"
   + "╚══════════════╝"
   )
+
+  let min_diff_upg_needed  = Math.ceil(Math.log(1   /server_info.minDifficulty) / Math.log(0.98))
+  let max_money_upg_needed = Math.ceil(Math.log(1e13/server_info.moneyMax     ) / Math.log(1.02))
+
+  
+  let total_production = 0
+  if (ns.hacknet.numNodes() > 0) {
+    for (let i = 0; i < ns.hacknet.numNodes(); i++) {
+      total_production += ns.hacknet.getNodeStats(i).production
+    }
+    if (!(ns.hacknet.getNodeStats(0).cache === undefined)) {
+      // Hashes are generated
+      total_production = total_production * (1e6/4)
+    }
+  }
+
+  ns.tprint("Target".padStart(8) + " | " + "Upgrades" + " | " + "Cost".padStart(10) + " | " + "Time")
+  for (let target = 1e13; target > server_info.moneyMax; target*0.1) {
+    let upg_needed = Math.ceil(Math.log(target/server_info.moneyMax) / Math.log(1.02))
+    let time_to_buy = total_production == 0 ? Infinity : ns.hacknet.hashCost("Increase Maximum Money", upg_needed) / (total_production / (1e6 / 4))
+
+    let days = Math.floor(time_to_buy / (60*60*24))
+    let hours = Math.floor((time_to_buy - (days * 60*60*24)) / (60*60))
+    let minutes = Math.floor((time_to_buy - ((days * 60*60*24) + (hours * 60*60))) / (60))
+    let seconds = time_to_buy - ((days * 60*60*24) + (hours * 60*60) + (minutes * 60))
+
+    ns.tprint(
+      ns.formatNumber(target).padStart(8) + " | "
+    + ns.formatNumber(upg_needed,0,10000).padStart(8) + " | "
+    + ns.formatNumber(ns.hacknet.hashCost("Increase Maximum Money", upg_needed),0,1e10).padStart(10) + " | "
+    + days + "D " + hours.toString().padStart(2) + "h " + minutes.toString().padStart(2) + "m " + ns.formatNumber(seconds,0).padStart(2) + "s"
+    ) 
+    target = target * 0.1
+    await ns.sleep(10)
+  }
 
 }
 
@@ -759,7 +794,7 @@ export async function main(ns) {
   }
 
   if (arg_flags.server_info) {
-    display_server_info(ns, servers, arg_flags.server_info)
+    await display_server_info(ns, servers, arg_flags.server_info)
   }
 
   if (arg_flags.bitnode_info) {

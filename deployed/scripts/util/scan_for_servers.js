@@ -2,7 +2,7 @@ const DEPTH_LIMIT = 50
 
 
 /**
- * @param {NS} ns - NetScript environment
+ * @param {import("../../../.").NS} ns - NetScript environment
  * @param {string} server - Server to scan from
  * @param {Object} filters - Filters to apply (AND logic applies if multiple are definted)
  * @param {string[]} servers - Servers we have already visited
@@ -28,27 +28,52 @@ function scan_for_servers_recur(ns, server, filters = {}, servers = [], results 
             if (ns.hasRootAccess(scan_result) === filters[filter]) {
               continue
             }
+            //ns.print("Failed due to root")
             fail_filter_cnt += 1
             break
           case "has_money":
             if ((ns.getServerMaxMoney(scan_result) > 0) === filters[filter]) {
               continue
             }
+            //ns.print("Failed due to money")
             fail_filter_cnt += 1
             break
           case "has_ram":
             if ((ns.getServerMaxRam(scan_result) > 0) === filters[filter]) {
               continue
             }
+            //ns.print("Failed due to ram")
             fail_filter_cnt += 1
             break
           case "include_home":
             continue // home is dealt with outside of the recursion function.
+          case "include_pserv":
+            if (
+                scan_result.includes("pserv") === filters[filter]
+            ||  !scan_result.includes("pserv")
+            ) {
+              continue
+            }
+            //ns.print("Failed due to pserv")
+            fail_filter_cnt += 1
+            break
+          case "include_hacknet":
+            if (
+                scan_result.includes("hacknet") === filters[filter]
+            ||  !scan_result.includes("hacknet")
+            ) {
+              continue
+            }
+            //ns.print("Failed due to hacknet")
+            fail_filter_cnt += 1
+            break
           default:
+            //ns.print("Failed due to default")
             fail_filter_cnt += 1
             break
         }
         if (fail_filter_cnt > 0) {
+          //ns.print("Server: " + scan_result + " Fail Cnt: " + fail_filter_cnt)
           break
         }
       }
@@ -106,6 +131,12 @@ export function scan_for_servers(ns, filters = {}) {
           continue
         }
         fail_filter_cnt += 1
+        break
+      case "include_pserv":
+        continue
+        break
+      case "include_hacknet":
+        continue
         break
       default:
         fail_filter_cnt += 1

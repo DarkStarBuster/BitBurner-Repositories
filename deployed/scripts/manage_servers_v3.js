@@ -180,6 +180,7 @@ function child_is_running(ns, filename) {
  */
 async function launch_child(ns, filename, server_to_target, ram_request_handler, ram_provide_handler) {
   let ram_needed = ns.getScriptRam(filename)
+  ns.print("INFO RAM required for " + filename + " is calculated as " + ram_needed)
   let server_to_use
   for (let server in RAM_INFO) {
     if (RAM_INFO[server].free_ram >= ram_needed) {
@@ -219,6 +220,7 @@ async function launch_child(ns, filename, server_to_target, ram_request_handler,
   else {
     ns.tprint("ERROR Exec failed to launch child process: " + filename + " targetting " + server_to_target + " on " + server_to_use)
     await release_ram(ns, server_to_use, RAM_INFO[server_to_use].free_ram, ram_request_handler, ram_provide_handler)
+    RAM_INFO[server_to_use].free_ram = 0
     return Promise.resolve(false)
   }
 }
@@ -276,7 +278,11 @@ async function check_root(ns, force_update) {
   let unrooted_servers = scan_for_servers(ns, (!force_update ? {"is_rooted":false} : {"include_home":true}))
 
   for (let server of unrooted_servers) {
-    if (ns.getServerRequiredHackingLevel(server) <= ns.getHackingLevel()) {
+    let server_object = ns.getServer(server)
+    if (
+        server_object.requiredHackingSkill <= ns.getHackingLevel()
+    ||  server_object.requiredHackingSkill === undefined
+    ) {
       //ns.print(server + " has a hacking level below current skill.")
       let ports_opened = 0
       for (var hack_type in hack_dictionary){
@@ -305,11 +311,12 @@ async function check_root(ns, force_update) {
       //   ns.print(server + " requires " + ns.getServerNumPortsRequired(server) + " ports opened to nuke, we opened " + ports_opened)
       // }
       let newly_rooted = false
-      if (ns.getServerNumPortsRequired(server) <= ports_opened && !ns.hasRootAccess(server)) {
+      if (server_object.numOpenPortsRequired <= ports_opened && !server_object.hasAdminRights) {
         ns.nuke(server)
         newly_rooted = true
+        server_object = ns.getServer(server)
       }
-      if (ns.hasRootAccess(server)) {
+      if (server_object.hasAdminRights) {
         if (newly_rooted) {
           ns.print(server + " successfully rooted")
           ns.toast("Successfully Rooted \"" + server + "\"", "success", 5000)
@@ -375,14 +382,33 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   ns.print(preping_servers.length + " Prepare Server processes found")
 
   let servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
-  
+  let temp_server = []
   if (bitnode_mults["ScriptHackMoneyGain"] === 0) {
     // We gain no money from hacking. We only gain the side effects from hacks being run
     // Do not start any managers or prepers
     servers = []
   }
+  else if (
+      bitnode_mults["ScriptHackMoney"] <= 0.1 // We get 10% or less of the money we Hack from a server
+  ||  bitnode_mults["ServerMaxMoney"] <= 0.1  // Servers start with 10% or less Maximum Money
+  ) {
+    // Focus on the hacknet target only and rely on pumping hashes into making it good
+    let target = control_params.hacknet.hash_target
+    let time   = control_params.hacknet.hash_time
+    if (
+        servers.includes(target)
+    &&  server_info[target]
+    &&  !(time === Infinity)
+    &&  time < (1/control_params.hacknet.threshold)
+    ) {
+      temp_server.push(target)
+    }
+    // Yes if we ever get to the point where we have finished "upgrading" a server via hacknet hashses
+    // we won't deal with the hacknet manager switching hash targets well. But let's cross that bridge
+    // once we actually get there, shall we?
+    servers = temp_server
+  }
   else if (server_info["home"].max_ram < control_params.hacker.consider_early) {
-    let temp_server = []
     if (servers.includes("n00dles")  && server_info["n00dles"]) temp_server.push("n00dles")
     if (servers.includes("joesguns") && server_info["joesguns"]) temp_server.push("joesguns")
     if (servers.includes("phantasy") && server_info["phantasy"]) temp_server.push("phantasy")
@@ -417,10 +443,15 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   let servers_to_prep = []
 
   for (let server of servers) {
+    if (server_info[server] === undefined) {
+      ns.print("Skip servers that are not in the server_info object.")
+      continue
+    }
+    let server_object = ns.getServer(server)
     if (
       (
-          ns.getServerSecurityLevel(server)  != server_info[server].min_diff
-      ||  ns.getServerMoneyAvailable(server) != server_info[server].max_money
+          server_object.hackDifficulty != server_info[server].min_diff
+      ||  server_object.moneyAvailable != server_info[server].max_money
       )
     &&  managed_servers.indexOf(server) == -1
     ) {
@@ -473,7 +504,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   for (let server of servers_to_prep) {
     // Not preping currently, request new prepper
     let successful = false
-    ns.print("Server: " + server + ". P_S: " + preping_servers.length + ". Inclues: " + preping_servers.includes(server))
+    //ns.print("Server: " + server + ". P_S: " + preping_servers.length + ". Inclues: " + preping_servers.includes(server))
     if (
         preping_servers.length < 2
     &&  !preping_servers.includes(server)
@@ -501,6 +532,10 @@ export async function main(ns) {
   
   // Disable logging of things in this script
   disable_logging(ns)
+
+  for(let server in RAM_INFO) {
+    delete RAM_INFO[server]
+  }
 
   ns.setTitle("Manage Servers V3.0 - PID: " + ns.pid)
 

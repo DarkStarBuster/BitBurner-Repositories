@@ -11,7 +11,7 @@ function disable_logging(ns) {
 
 }
 
-/** @param {NS} ns */
+/** @param {import("../../.").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(1)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
@@ -31,24 +31,79 @@ export async function main(ns) {
   let value = 0
   let servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
   servers.sort(
+    // function(a,b){
+    //   let player = ns.getPlayer()
+    //   let server_a = ns.getServer(a)
+    //   let server_b = ns.getServer(b)
+    //   server_a.hackDifficulty = server_a.minDifficulty
+    //   server_a.moneyAvailable = server_a.moneyMax
+    //   server_b.hackDifficulty = server_b.minDifficulty
+    //   server_b.moneyAvailable = server_b.moneyMax
+
+    //   let server_a_hack_percent = ns.formulas.hacking.hackPercent(server_a, player)
+    //   let server_a_hack_chance  = ns.formulas.hacking.hackChance (server_a, player)
+    //   let server_a_weaken_time  = ns.formulas.hacking.weakenTime (server_a, player)
+    //   let server_b_hack_percent = ns.formulas.hacking.hackPercent(server_b, player)
+    //   let server_b_hack_chance  = ns.formulas.hacking.hackChance (server_b, player)
+    //   let server_b_weaken_time  = ns.formulas.hacking.weakenTime (server_b, player)
+
+    //   return (server_b_hack_percent * server_b_hack_chance * server_b.moneyMax)
+    //   - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
+    // }
+    
+    // Negative Result means a before b
+    // Zero Result means no change
+    // Positive Result means b before a
     function(a,b){
-      let player = ns.getPlayer()
+      let player   = ns.getPlayer()
       let server_a = ns.getServer(a)
       let server_b = ns.getServer(b)
-      server_a.hackDifficulty = server_a.minDifficulty
-      server_a.moneyAvailable = server_a.moneyMax
-      server_b.hackDifficulty = server_b.minDifficulty
-      server_b.moneyAvailable = server_b.moneyMax
 
-      let server_a_hack_percent = ns.formulas.hacking.hackPercent(server_a, player)
-      let server_a_hack_chance  = ns.formulas.hacking.hackChance (server_a, player)
-      let server_a_weaken_time  = ns.formulas.hacking.weakenTime (server_a, player)
-      let server_b_hack_percent = ns.formulas.hacking.hackPercent(server_b, player)
-      let server_b_hack_chance  = ns.formulas.hacking.hackChance (server_b, player)
-      let server_b_weaken_time  = ns.formulas.hacking.weakenTime (server_b, player)
+      // Compare Hash Upgrades required to get to Minimum Security
+      let server_a_min_diff_upg_needed = Math.ceil(Math.log(1/server_a.minDifficulty) / Math.log(0.98))
+      let server_b_min_diff_upg_needed = Math.ceil(Math.log(1/server_b.minDifficulty) / Math.log(0.98))
 
-      return (server_b_hack_percent * server_b_hack_chance * server_b.moneyMax)
-      - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
+      let server_min_diff_upg_factor = Math.sign(server_a_min_diff_upg_needed - server_b_min_diff_upg_needed) * 100
+
+      // Compare Hash Upgrades required to get to 10 Trillion
+      let server_a_max_money_upg_needed = Math.ceil(Math.log(1e13/server_a.moneyMax) / Math.log(1.02))
+      let server_b_max_money_upg_needed = Math.ceil(Math.log(1e13/server_b.moneyMax) / Math.log(1.02))
+
+      let server_max_money_upg_factor = Math.sign(server_a_max_money_upg_needed - server_b_max_money_upg_needed) * 100
+  
+      server_a.minDifficulty  = 1
+      server_a.hackDifficulty = 1
+      server_b.minDifficulty  = 1
+      server_b.hackDifficulty = 1
+      // 
+      let server_money_max_factor = 0
+      // Server A is greater than ten trillion, Server B is less than ten trillion, push B up the rankings.
+      if (
+          server_a.moneyMax > 1e13
+      &&  server_b.moneyMax < 1e13
+      ) {
+        server_money_max_factor = +1000
+      }
+      // Server A is less than ten trillion, Server B is greater than ten trillion, push A up the rankings.
+      else if (
+          server_a.moneyMax < 1e13
+      &&  server_b.moneyMax > 1e13
+      ) {
+        server_money_max_factor = -1000
+      }
+      // Either:
+      // Both servers money maximum is greater than ten trillion, push the larger one up the rankings.
+      // Or:
+      // Servers are both less than ten trillion, order them so that the larger one is pushed up the rankings.
+      // Is true.
+      else {
+        server_money_max_factor = Math.sign(
+          server_b.moneyMax * ns.formulas.hacking.hackPercent(server_b, player) * ns.formulas.hacking.hackChance(server_b, player)
+        - server_a.moneyMax * ns.formulas.hacking.hackPercent(server_a, player) * ns.formulas.hacking.hackChance(server_a, player)
+        ) * 100
+      }
+
+      return Math.sign(server_money_max_factor + server_min_diff_upg_factor + server_max_money_upg_factor)
     }
   )
 
@@ -95,6 +150,12 @@ export async function main(ns) {
       + server.padEnd(max_server_length) + "[" + ns.getServerNumPortsRequired(server) + "]: "
       + "[" + hack_batches_needed.toString().padStart(4) + " @ " + ns.formatPercent(server_hack_chance,2).padStart(7) + "] * "
       + "$" + ns.formatNumber(money_produced).padStart(8)
+      + " | " + Math.ceil(Math.log(1/server_obj.minDifficulty) / Math.log(0.98)).toString().padStart(4) 
+      + " [ " + ns.hacknet.hashCost("Reduce Minimum Security", Math.ceil(Math.log(1/server_obj.minDifficulty) / Math.log(0.98))).toString().padStart(8) + " ]"
+      + " " + Math.ceil(Math.log(1e13/server_obj.moneyMax) / Math.log(1.02)).toString().padStart(4)
+      + " [ " + ns.hacknet.hashCost("Increase Maximum Money", Math.ceil(Math.log(1e13/server_obj.moneyMax) / Math.log(1.02))).toString().padStart(8) + " ]"
+
+      //"Reduce Minimum Security","Increase Maximum Money"
       row += 1
     }
     for (let string in table_strings) {
@@ -116,24 +177,79 @@ export async function main(ns) {
     await ns.sleep(1000)
     servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
     servers.sort(
+      // function(a,b){
+      //   let player = ns.getPlayer()
+      //   let server_a = ns.getServer(a)
+      //   let server_b = ns.getServer(b)
+      //   server_a.hackDifficulty = server_a.minDifficulty
+      //   server_a.moneyAvailable = server_a.moneyMax
+      //   server_b.hackDifficulty = server_b.minDifficulty
+      //   server_b.moneyAvailable = server_b.moneyMax
+  
+      //   let server_a_hack_percent = ns.formulas.hacking.hackPercent(server_a, player)
+      //   let server_a_hack_chance  = ns.formulas.hacking.hackChance (server_a, player)
+      //   let server_a_weaken_time  = ns.formulas.hacking.weakenTime (server_a, player)
+      //   let server_b_hack_percent = ns.formulas.hacking.hackPercent(server_b, player)
+      //   let server_b_hack_chance  = ns.formulas.hacking.hackChance (server_b, player)
+      //   let server_b_weaken_time  = ns.formulas.hacking.weakenTime (server_b, player)
+  
+      //   return (server_b_hack_percent * server_b_hack_chance * server_b.moneyMax)
+      //   - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
+      // }
+    
+      // Negative Result means a before b
+      // Zero Result means no change
+      // Positive Result means b before a
       function(a,b){
-        let player = ns.getPlayer()
+        let player   = ns.getPlayer()
         let server_a = ns.getServer(a)
         let server_b = ns.getServer(b)
-        server_a.hackDifficulty = server_a.minDifficulty
-        server_a.moneyAvailable = server_a.moneyMax
-        server_b.hackDifficulty = server_b.minDifficulty
-        server_b.moneyAvailable = server_b.moneyMax
   
-        let server_a_hack_percent = ns.formulas.hacking.hackPercent(server_a, player)
-        let server_a_hack_chance  = ns.formulas.hacking.hackChance (server_a, player)
-        let server_a_weaken_time  = ns.formulas.hacking.weakenTime (server_a, player)
-        let server_b_hack_percent = ns.formulas.hacking.hackPercent(server_b, player)
-        let server_b_hack_chance  = ns.formulas.hacking.hackChance (server_b, player)
-        let server_b_weaken_time  = ns.formulas.hacking.weakenTime (server_b, player)
+        // Compare Hash Upgrades required to get to Minimum Security
+        let server_a_min_diff_upg_needed = Math.ceil(Math.log(1/server_a.minDifficulty) / Math.log(0.98))
+        let server_b_min_diff_upg_needed = Math.ceil(Math.log(1/server_b.minDifficulty) / Math.log(0.98))
   
-        return (server_b_hack_percent * server_b_hack_chance * server_b.moneyMax)
-        - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
+        let server_min_diff_upg_factor = Math.sign(server_a_min_diff_upg_needed - server_b_min_diff_upg_needed) * 100
+  
+        // Compare Hash Upgrades required to get to 10 Trillion
+        let server_a_max_money_upg_needed = Math.ceil(Math.log(1e13/server_a.moneyMax) / Math.log(1.02))
+        let server_b_max_money_upg_needed = Math.ceil(Math.log(1e13/server_b.moneyMax) / Math.log(1.02))
+  
+        let server_max_money_upg_factor = Math.sign(server_a_max_money_upg_needed - server_b_max_money_upg_needed) * 100
+  
+        server_a.minDifficulty  = 1
+        server_a.hackDifficulty = 1
+        server_b.minDifficulty  = 1
+        server_b.hackDifficulty = 1
+        // 
+        let server_money_max_factor = 0
+        // Server A is greater than ten trillion, Server B is less than ten trillion, push B up the rankings.
+        if (
+            server_a.moneyMax > 1e13
+        &&  server_b.moneyMax < 1e13
+        ) {
+          server_money_max_factor = +1000
+        }
+        // Server A is less than ten trillion, Server B is greater than ten trillion, push A up the rankings.
+        else if (
+            server_a.moneyMax < 1e13
+        &&  server_b.moneyMax > 1e13
+        ) {
+          server_money_max_factor = -1000
+        }
+        // Either:
+        // Both servers money maximum is greater than ten trillion, push the larger one up the rankings.
+        // Or:
+        // Servers are both less than ten trillion, order them so that the larger one is pushed up the rankings.
+        // Is true.
+        else {
+          server_money_max_factor = Math.sign(
+            server_b.moneyMax * ns.formulas.hacking.hackPercent(server_b, player) * ns.formulas.hacking.hackChance(server_b, player)
+          - server_a.moneyMax * ns.formulas.hacking.hackPercent(server_a, player) * ns.formulas.hacking.hackChance(server_a, player)
+          ) * 100
+        }
+  
+        return Math.sign(server_money_max_factor + server_min_diff_upg_factor + server_max_money_upg_factor)
       }
     )
     await ns.sleep(200)

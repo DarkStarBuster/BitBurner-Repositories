@@ -1,13 +1,16 @@
+import { PORT_IDS } from "/scripts/util/port_management"
+import { COLOUR, colourize } from "/scripts/util/colours"
+
 /** @param {NS} ns */
 export async function main(ns) {
-  const CONTROL_PARAMETERS    = ns.getPortHandle(1)
-  const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
-  const UPDATE_HANDLER        = ns.getPortHandle(4)
+  const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
+  const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
+  const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
 
-  while (CONTROL_PARAMETERS.empty()) {
-    await ns.sleep(50)
-  }
-  while (BITNODE_MULTS_HANDLER.empty()) {
+  while (
+      CONTROL_PARAMETERS.empty()
+  ||  BITNODE_MULTS_HANDLER.empty()
+  ) {
     await ns.sleep(50)
   }
 
@@ -125,7 +128,10 @@ export async function main(ns) {
       }
       else {
         ns.print("Server: " + server + " [" + p_servers[server] + "]=>" + possible_ram[p_servers[server]+1] + " Upg. Cost: " + ns.getPurchasedServerUpgradeCost(server,possible_ram[p_servers[server]+1]))
-        if ((ns.getPurchasedServerUpgradeCost(server,possible_ram[p_servers[server]+1]) * purchase_mult) < ns.getServerMoneyAvailable("home")) {
+        if (
+            (ns.getPurchasedServerUpgradeCost(server,possible_ram[p_servers[server]+1]) * purchase_mult) < ns.getServerMoneyAvailable("home")
+        &&  possible_ram[p_servers[server]+1] < ns.getServerMaxRam("home")
+        ) {
           ns.print("Go for purchase")
           let upgraded = ns.upgradePurchasedServer(server,possible_ram[p_servers[server]+1])
           if (upgraded) {

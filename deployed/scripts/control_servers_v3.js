@@ -1,4 +1,13 @@
-import {scan_for_servers} from "/scripts/util/scan_for_servers"
+import { scan_for_servers } from "/scripts/util/scan_for_servers"
+import { PORT_IDS } from "/scripts/util/port_management"
+import { COLOUR, colourize } from "/scripts/util/colours"
+import { release_ram, request_ram } from "/scripts/util/ram_management"
+import { append_to_file, delete_file, rename_file } from "/scripts/util/file_management"
+
+const LOG_COLOUR = colourize(COLOUR.MINT,9)
+const DEF_COLOUR = colourize(COLOUR.DEFAULT)
+const FILENAME = "control_servers_curr.txt"
+const PRIOR_FILENAME = "control_servers_prior.txt"
 
 const RAM_INFO = {
   //[server] = {
@@ -52,10 +61,41 @@ let all_server_stats = {}
  * }
  */
 
+function init(ns) {
+  disable_logs(ns)
+  init_log(ns)
+
+  for(let server in RAM_INFO) {
+    delete RAM_INFO[server]
+  }
+  all_server_stats = {}
+}
+
 /** @param {NS} ns */
 function disable_logs(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
+}
+
+/**
+ * @param {NS} ns 
+ */
+function init_log(ns){
+  if (ns.fileExists(PRIOR_FILENAME)) {
+    delete_file(ns, PRIOR_FILENAME)
+  }
+  if (ns.fileExists(FILENAME)) {
+    rename_file(ns, FILENAME, PRIOR_FILENAME)
+  }
+}
+
+/**
+ * @param {NS} ns 
+ * @param {string} message 
+ */
+function log(ns, message) {
+  ns.print(message)
+  append_to_file(ns, FILENAME, message)
 }
 
 /**
@@ -128,14 +168,20 @@ function populate_all_server_stats(ns, handler) {
  */
 async function populate_control_and_bitnode_stats(ns, control_param_handler, bitnode_mults_handler) {
   let pid = ns.exec("/scripts/util/control_parameters.js","home",1)
-  if (pid === 0) ns.tprint("ERROR Failed to launch Control Parameters script after being allocated RAM")
+  if (pid === 0) {
+    ns.tprint("ERROR Failed to launch Control Parameters script.")
+    ns.exit()
+  }
 
   while(control_param_handler.empty()) {
     await ns.sleep(50)
   }
 
   pid = ns.exec("/scripts/util/populate_bitnode_mults.js","home",1)
-  if (pid === 0) ns.tprint("ERROR Failed to launch BitNode Multipliers script after being allocated RAM")
+  if (pid === 0) {
+    ns.tprint("ERROR Failed to launch BitNode Multipliers script.")
+    ns.exit()
+  }
 
   while(bitnode_mults_handler.empty()) {
     await ns.sleep(50)
@@ -154,44 +200,32 @@ async function populate_control_and_bitnode_stats(ns, control_param_handler, bit
 async function start_ram_manager(ns, ram_request_handler, ram_provide_handler) {
   let ram_pid = ns.exec("/scripts/manage_ram.js", "home", 1)
 
+  if(ram_pid === 0) {
+    log(ns, "ERROR Failed to launch RAM Manager script.")
+    ns.tprint("ERROR Failed to launch RAM Manager script.")
+    ns.exit()
+  }
+  log(ns, "RAM Manager launched successfully. Await RAM Manager Initialisation.")
   while(ram_provide_handler.empty()) {
     await ns.sleep(50)
   }
 
   let ram_manager_response = ram_provide_handler.read()
   if (!(ram_manager_response === "OK")) {
+    log(ns, "ERROR RAM Manager did not Initialise successfully:")
+    log(ns,ram_manager_response)
+    ns.tprint("ERROR RAM Manager did not Initialise successfully:")
     ns.tprint(ram_manager_response)
     ns.exit()
   }
+  log(ns, "RAM Manager Initialised successfully.")
 
-  let ram_request = {
-    "action": "request_ram",
-    "amount": ns.getScriptRam("/scripts/manage_ram.js") + ns.getScriptRam("/scripts/control_servers_v3.js"),
-    "requester": ns.pid
-  }
-
-  while(!ram_request_handler.tryWrite(JSON.stringify(ram_request))){
-    await ns.sleep(50)
-  }
-
-  let awaiting_response = true
-  let ram_response = {}
-  while (awaiting_response) {
-    while(ram_provide_handler.empty()) {
-      await ns.sleep(50)
-    }
-    ram_response = JSON.parse(ram_provide_handler.peek())
-    if (parseInt(ram_response.requester) === ns.pid) {
-      awaiting_response = false
-      ram_provide_handler.read()
-    }
-    else {
-      await ns.sleep(50)
-    }
-  }
+  let ram_response = await request_ram(ns, ns.getScriptRam("/scripts/manage_ram.js") + ns.getScriptRam("/scripts/control_servers_v3.js"))
 
   if (!(ram_response.result === "OK")) {
-    ns.tprint("ERROR RAM Manager somehow failed to Provide RAM for our and its own existance despite both scripts running up until this point")
+    log(ns, "ERROR RAM Manager somehow failed to Provide RAM for both its and this scripts own existance despite both scripts running up until this point")
+    log(ns, JSON.stringify(ram_response))
+    ns.tprint("ERROR RAM Manager somehow failed to Provide RAM for both its and this scripts own existance despite both scripts running up until this point")
     ns.tprint(JSON.stringify(ram_response))
     ns.exit()
   }
@@ -211,8 +245,8 @@ async function start_ram_manager(ns, ram_request_handler, ram_provide_handler) {
     }
   }
 
-  ns.print("RAM Manager Launched")
-  ns.print("Server " + ram_response.server + " has " + RAM_INFO[ram_response.server].assigned_ram + " assigned. And " + RAM_INFO[ram_response.server].free_ram)
+  log(ns,"RAM Manager has provided RAM for both its and this scripts own existence.")
+  log(ns,"Server \"" + ram_response.server + "\" has " + RAM_INFO[ram_response.server].assigned_ram + " assigned RAM. And " + RAM_INFO[ram_response.server].free_ram + " free RAM")
 
   return Promise.resolve()
 }
@@ -224,6 +258,7 @@ async function start_ram_manager(ns, ram_request_handler, ram_provide_handler) {
  * @param {string} server
  */
 function add_child_process(ns, pid, filename, server) {
+  log(ns, "Adding Child Process using RAM from \"" + server + "\" to run " + filename + " (" + pid + ") at a cost of " + ns.getScriptRam(filename) + " RAM")
   RAM_INFO[server].free_ram -= ns.getScriptRam(filename)
   RAM_INFO[server].processes[pid] = {
     "ram_cost": ns.getScriptRam(filename),
@@ -237,6 +272,7 @@ function add_child_process(ns, pid, filename, server) {
  * @returns {boolean}
  */
 function child_is_running(ns, filename) {
+  log(ns, "Check if Child Process using the " + filename + " script is running.")
   let runing = false
   let pid_found
   let server_name
@@ -246,12 +282,14 @@ function child_is_running(ns, filename) {
         runing = ns.isRunning(parseInt(pid))
         server_name = server
         pid_found = pid
+        log(ns, "Child Process using the " + filename + " script found on \"" + server_name + "\", Running Status: " + runing)
       }
     }
   }
 
   if (!(pid_found === undefined)) {
     if (!runing) {
+      log(ns, "Clean up RAM State since Child Process was not runing.")
       RAM_INFO[server_name].free_ram += RAM_INFO[server_name].processes[pid_found].ram_cost
       delete RAM_INFO[server_name].processes[pid_found]
     }
@@ -270,7 +308,7 @@ async function launch_child(ns, filename, ram_request_handler, ram_provide_handl
   let ram_needed = ns.getScriptRam(filename)
   let server_to_use
   for (let server in RAM_INFO) {
-    ns.print("Server " + server + " has free_ram: " + RAM_INFO[server].free_ram)
+    log(ns,"Server " + server + " has free_ram: " + RAM_INFO[server].free_ram)
     if (RAM_INFO[server].free_ram >= ram_needed) {
       server_to_use = server
       break
@@ -300,47 +338,36 @@ async function launch_child(ns, filename, ram_request_handler, ram_provide_handl
  *  @param {NetscriptPort} handler
  */
 async function start_managers(ns, ram_request_handler, ram_provide_handler) {
+  ns.tail()
+  log(ns, "Calculate amount of RAM we need for our managers.")
   let ram_needed = 0
+  ram_needed += ns.getScriptRam("/scripts/util/control_parameters.js")
+  log(ns, "Add Control Parameter script RAM. Total: " + ram_needed)
+  ram_needed += ns.getScriptRam("/scripts/util/populate_bitnode_mults.js")
+  log(ns, "Add Bitnode Mult script RAM. Total: " + ram_needed)
   ram_needed += ns.getScriptRam("/scripts/manage_servers_v3.js")
+  log(ns, "Add Hack/Prep Manager Manager script RAM. Total: " + ram_needed)
   if (ns.getServerMaxRam("home") >= 64) {
-    ram_needed += ns.getScriptRam("/scripts/manage_hacknet_v2.js")
+    ram_needed += ns.getScriptRam("/scripts/manage_hacknet_v3.js")
+    log(ns, "Add Hacknet Manager script RAM. Total: " + ram_needed)
     ram_needed += ns.getScriptRam("/scripts/manage_pservers_v2.js")
+    log(ns, "Add Hack/Prep Manager Manager script RAM. Total: " + ram_needed)
+  }
+  if (ns.getServerMaxRam("home") >= 128) {
     ram_needed += ns.getScriptRam("/scripts/manage_codecontracts.js")
+    log(ns, "Add Code Contract Manager script RAM. Total: " + ram_needed)
     ram_needed += ns.getScriptRam("/scripts/manage_free_ram_v2.js")
+    log(ns, "Add Free RAM Manager script RAM. Total: " + ram_needed)
   }
 
-  let ram_request = {
-    "action": "request_ram",
-    "amount": ram_needed,
-    "requester": ns.pid
-  }
+  log(ns, "Request " + ram_needed + " RAM for our other Manager processes.")
 
-  ns.print("RAM Request: " + JSON.stringify(ram_request))
-
-  while(!ram_request_handler.tryWrite(JSON.stringify(ram_request))){
-    await ns.sleep(50)
-  }
-
-  let awaiting_response = true
-  let ram_response = {}
-  while (awaiting_response) {
-    while(ram_provide_handler.empty()) {
-      await ns.sleep(50)
-    }
-    ram_response = JSON.parse(ram_provide_handler.peek())
-    if (parseInt(ram_response.requester) === ns.pid) {
-      awaiting_response = false
-      ram_provide_handler.read()
-    }
-    else {
-      await ns.sleep(50)
-    }
-  }
-
-  ns.print("RAM Response: " + JSON.stringify(ram_response))
+  let ram_response = await request_ram(ns, ram_needed)
 
   if (!(ram_response.result === "OK")) {
-    ns.tprint("ERROR RAM Manager failed to provide RAM for the requested managers.")
+    log(ns, "ERROR RAM Manager failed to provide RAM for the Manager processes.")
+    log(ns, JSON.stringify(ram_response))
+    ns.tprint("ERROR RAM Manager failed to provide RAM for the Manager processes.")
     ns.tprint(JSON.stringify(ram_response))
     ns.exit()
   }
@@ -355,23 +382,40 @@ async function start_managers(ns, ram_request_handler, ram_provide_handler) {
         "free_ram": ram_response.amount
       }
     }
-    ns.print("Server " + ram_response.server + " has " + ram_response.amount + " assigned.")
+    log(ns,"Server \"" + ram_response.server + "\" has had " + ram_response.amount + " RAM assigned to us.")
   }
 
   let pid = ns.exec("/scripts/manage_servers_v3.js",ram_response.server,1)
-  if (pid === 0) ns.tprint("ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM")
+  if (pid === 0) {
+    log(ns, "ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
+    ns.tprint("ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
+  }
   else add_child_process(ns,pid,"/scripts/manage_servers_v3.js",ram_response.server)
 
   if (ns.getServerMaxRam("home") >= 64) {
-    pid = ns.exec("/scripts/manage_hacknet_v2.js",ram_response.server,1)
-    if (pid === 0) ns.tprint("ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM")
+    pid = ns.exec("/scripts/manage_hacknet_v3.js",ram_response.server,1)
+    if (pid === 0) {
+      log(ns, "ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
+      ns.tprint("ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
+    }
     else add_child_process(ns,pid,"/scripts/manage_hacknet_v2.js",ram_response.server)
   
     pid = ns.exec("/scripts/manage_pservers_v2.js",ram_response.server,1)
-    if (pid === 0) ns.tprint("ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM")
+    if (pid === 0) {
+      log(ns, "ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
+      ns.tprint("ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
+    }
     else add_child_process(ns,pid,"/scripts/manage_pservers_v2.js",ram_response.server)
     // Either of these two processes can enqueue the Free Ram Manager
-    await ns.sleep(10000)
+  }
+
+  if (ns.getServerMaxRam("home") >= 128) {
+    pid = ns.exec("/scripts/manage_codecontracts.js",ram_response.server,1)
+    if (pid === 0) {
+      log(ns, "ERROR Failed to launch Code Contract Manager after being allocated RAM.")
+      ns.tprint("ERROR Failed to launch Code Contract Manager after being allocated RAM.")
+    }
+    else add_child_process(ns,pid,"/scripts/manage_codecontracts.js",ram_response.server)
   }
   // if (ns.getServerMaxRam("home") > 128) {
   //   update = {
@@ -391,14 +435,14 @@ async function start_managers(ns, ram_request_handler, ram_provide_handler) {
 
 /** @param {NS} ns */
 export async function main(ns) {
-  const CONTROL_PARAM_HANDLER = ns.getPortHandle(1)
-  const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
-  const SERVER_INFO_HANDLER   = ns.getPortHandle(3)
-  const UPDATE_HANDLER        = ns.getPortHandle(4)
-  const RAM_REQUEST_HANDLER   = ns.getPortHandle(5)
-  const RAM_PROVIDE_HANDLER   = ns.getPortHandle(6)
+  const CONTROL_PARAM_HANDLER = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
+  const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
+  const SERVER_INFO_HANDLER   = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)
+  const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+  const RAM_REQUEST_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
+  const RAM_PROVIDE_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
 
-  disable_logs(ns)
+  init(ns)
 
   ns.setTitle("Control Servers V3.0 - PID: " + ns.pid)
 
@@ -410,78 +454,69 @@ export async function main(ns) {
   RAM_PROVIDE_HANDLER.clear()
 
   // Clear the slate
-  ns.print("Killing all other processes")
+  log(ns, "Killing all other processes")
   kill_all_other_processes(ns)
 
-  while (!CONTROL_PARAM_HANDLER.empty()) {
-    CONTROL_PARAM_HANDLER.clear()
-    await ns.sleep(50)
-  }
-  while (!BITNODE_MULTS_HANDLER.empty()) {
-    BITNODE_MULTS_HANDLER.clear()
-    await ns.sleep(50)
-  }
-  while (!SERVER_INFO_HANDLER.empty()) {
-    SERVER_INFO_HANDLER.clear()
-    await ns.sleep(50)
-  }
-  while (!UPDATE_HANDLER.empty()) {
-    UPDATE_HANDLER.clear()
-    await ns.sleep(50)
-  }
-  while (!RAM_REQUEST_HANDLER.empty()) {
-    RAM_REQUEST_HANDLER.clear()
-    await ns.sleep(50)
-  }
-  while (!RAM_PROVIDE_HANDLER.empty()) {
-    RAM_PROVIDE_HANDLER.clear()
+  while (
+      !CONTROL_PARAM_HANDLER.empty()
+  ||  !BITNODE_MULTS_HANDLER.empty()
+  ||  !SERVER_INFO_HANDLER.empty()
+  ||  !UPDATE_HANDLER.empty()
+  ||  !RAM_REQUEST_HANDLER.empty()
+  ||  !RAM_PROVIDE_HANDLER.empty()
+  ) {
+    if(!CONTROL_PARAM_HANDLER.empty()) CONTROL_PARAM_HANDLER.clear()
+    if(!BITNODE_MULTS_HANDLER.empty()) BITNODE_MULTS_HANDLER.clear()
+    if(!SERVER_INFO_HANDLER.empty()  ) SERVER_INFO_HANDLER.clear()
+    if(!UPDATE_HANDLER.empty()       ) UPDATE_HANDLER.clear()
+    if(!RAM_REQUEST_HANDLER.empty()  ) RAM_REQUEST_HANDLER.clear()
+    if(!RAM_PROVIDE_HANDLER.empty()  ) RAM_PROVIDE_HANDLER.clear()
     await ns.sleep(50)
   }
 
-  ns.print("Gather Statistics of the environment we are working in.")
+  log(ns,"Gather Statistics of the environment we are working in.")
   populate_all_server_stats(ns, SERVER_INFO_HANDLER)
 
-  ns.print("Ensure our control parameters are written to their ports.")
+  log(ns,"Ensure our control parameters are written to their ports.")
   await populate_control_and_bitnode_stats(ns, CONTROL_PARAM_HANDLER, BITNODE_MULTS_HANDLER)
 
-  ns.print("Start the RAM manager.")
+  log(ns,"Start the RAM manager.")
   await start_ram_manager(ns, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
 
-  ns.print("Start our other managers.")
+  log(ns,"Start our other managers.")
   await start_managers(ns, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
 
-  ns.print("Starting Loop")
-  let prior_time = Date.now()
+  log(ns,"Starting Loop")
   while(true){
-    let update_string = UPDATE_HANDLER.peek()
-    //ns.print("Update String at start of loop: " + update_string)
-    while (update_string === "NULL PORT DATA"){
-      await ns.sleep(50)
-      update_string = UPDATE_HANDLER.peek()
-      //ns.print("Await ended: String: " + update_string + " Is Empty: " + UPDATE_HANDLER.empty())
+    log(ns, "Awaiting Update we can act on.")
+    let awaiting_update = true
+    let update = {}
+    while (awaiting_update) {
+      while(UPDATE_HANDLER.empty()) {
+        await ns.sleep(50)
+      }
+      update = JSON.parse(UPDATE_HANDLER.peek())
+      if (
+          update.action === "update_info"
+      ||  update.action === "request_action"
+      ||  update.action === "death_react"
+      ) {
+        log(ns, "Update for us to act on has arrive:\n" + UPDATE_HANDLER.peek())
+        awaiting_update = false 
+        UPDATE_HANDLER.read()
+      }
+      else {
+        await ns.sleep(50)
+      }
     }
 
-    //
-    if ((Date.now() - prior_time) > 10000) {
-      await populate_control_and_bitnode_stats(ns, CONTROL_PARAM_HANDLER, BITNODE_MULTS_HANDLER)
-      prior_time = Date.now()
-    }
-
-    // Look at the top of the queue
-    //ns.print(update_string)
-    let update = JSON.parse(update_string)
-    //ns.print("Recieved Update to Process")
-    // for (let key in update) {
-    //   ns.print("Key: " + key + " Val: " + update[key])
-    // }
-
-    //ns.print("Action Type: " + update.action)
+    //log(ns,"Action Type: " + update.action)
     if (update.action === "update_info") {
-      //ns.print("Performing Update Info")
+      //log(ns,"Performing Update Info")
       update_server_stats(ns, update.update_info.server, SERVER_INFO_HANDLER)
     }
     else if (update.action === "request_action") {
-      ns.print("Performing Request Action")
+      log(ns,"Performing Request Action")
       // let request_action = update.request_action
       // let server_to_target = request_action.target 
       // let ram_needed = 0
@@ -501,7 +536,7 @@ export async function main(ns) {
           break
         case "hacknet":
           // Launch Automatic Hacknet Upgrade Manager script
-          filename = "/scripts/manage_hacknet_v2.js"
+          filename = "/scripts/manage_hacknet_v3.js"
           break
         case "pserver":
           // Launch Automatic Personal Server Manager script
@@ -525,18 +560,15 @@ export async function main(ns) {
       }  
     }
     else if (update.action === "death_react") {
-      ns.print("Performing Death Reaction")
+      log(ns,"Performing Death Reaction")
       /** @type {number[]} */
       let pid_array = update.death_react.pids_to_kill
-      ns.print("Killing the following PIDs: " + pid_array)
+      log(ns,"Killing the following PIDs: " + pid_array)
 
       for (let pid of pid_array) {
         ns.kill(parseInt(pid))
       }
     }
-    
-    // Pop the update from the queue now that we've finished it
-    UPDATE_HANDLER.read()
     await ns.sleep(50)
   }
 }

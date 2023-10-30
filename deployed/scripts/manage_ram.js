@@ -1,5 +1,8 @@
+import { PORT_IDS } from "/scripts/util/port_management"
+import { COLOUR, colourize } from "/scripts/util/colours"
 
 let ram_state = {}
+const IGNORE_LIST = ["hacknet"]
 
 /**
  * @param {NS} ns
@@ -9,6 +12,8 @@ function initialise_ram_manager(ns, server_info_handler, control_parameters) {
 
   let server_info   = JSON.parse(server_info_handler.peek())
   let control_param = JSON.parse(control_parameters.peek())
+
+  ram_state = {}
 
   for (let server in server_info) {
     ram_state[server] = {
@@ -72,10 +77,25 @@ function update_max_ram_state(ns, server_info_handler) {
  * @param {number} ram_requester
  * @returns {Object}
  */
-function find_ram(ns, ram_amount, ram_requester) {
+async function find_ram(ns, ram_amount, ram_requester, include_hacknet = false) {
 
   let found_existing = false
   let server_to_reserve_on
+
+  let servers_to_ignore = []
+  for (let string of IGNORE_LIST) {
+    if (
+        include_hacknet
+    &&  string.includes("hacknet")
+    ) {
+      continue
+    }
+    servers_to_ignore.push(string)
+  }
+  if (include_hacknet) {
+    ns.print("Include Hacknet")
+    ns.print("Servers to Ignore: " + servers_to_ignore)
+  }
 
   let sorted_ram_keys = Object.keys(ram_state).sort(
     function(a,b){
@@ -93,10 +113,22 @@ function find_ram(ns, ram_amount, ram_requester) {
         return ram_state[b].max_ram - ram_state[a].max_ram
       }
     }
+  ).filter(
+    function(server) {
+      for (let i=0; i < servers_to_ignore.length; i++) {
+        if (server.includes(servers_to_ignore[i])) {
+          return false
+        }
+      }
+      return true
+    }
   )
+  if (include_hacknet) {
+    ns.print("Servers to find RAM on: " + sorted_ram_keys)
+  }
 
   for (let server of sorted_ram_keys) {
-    ns.print("Checking server " + server + " for free RAM: " + ram_state[server].free_ram)
+    //ns.print("Checking server " + server + " for free RAM: " + ram_state[server].free_ram)
     for (let pid in ram_state[server].ram_slices) {
       if (
           pid == ram_requester
@@ -112,7 +144,7 @@ function find_ram(ns, ram_amount, ram_requester) {
 
   if (server_to_reserve_on === undefined) {
     for (let server of sorted_ram_keys) {
-      ns.print("Checking server " + server + " for free RAM: " + ram_state[server].free_ram)
+      //ns.print("Checking server " + server + " for free RAM: " + ram_state[server].free_ram)
       if (ram_state[server].free_ram >= ram_amount) {
         ns.print("Found server " + server + " with enough free RAM to accomodate the request.")
         server_to_reserve_on = server
@@ -123,6 +155,9 @@ function find_ram(ns, ram_amount, ram_requester) {
 
   if (server_to_reserve_on === undefined) {
     ns.print("No server found with " + ram_amount + " RAM free.")
+    if (include_hacknet) {
+      await ns.sleep(10000)
+    }
     return {
       "action"        : "request_ram",
       "result"        : "NOK",
@@ -142,6 +177,9 @@ function find_ram(ns, ram_amount, ram_requester) {
       }
     }
     ns.print("Returning RAM Request Response from " + ram_requester)
+    if (include_hacknet) {
+      await ns.sleep(10000)
+    }
     return {
       "action"   : "request_ram",
       "result"   : "OK",
@@ -203,30 +241,30 @@ function release_ram(ns, ram_server, ram_amount, ram_requester) {
   }
 }
 
-function free_ram_request(ns, server, requester) {
+function free_ram_request(ns, server, amount, requester) {
   if (ram_state[server] === undefined) {
     return {
       "action"        : "free_ram_request"
      ,"result"        : "NOK"
-     ,"failure_reason": "ERROR Server does not exist in the RAM State"
+     ,"failure_reason": "ERROR Server \"" + server + "\" does not exist in the RAM State"
      ,"server"        : server
      ,"requester"     : requester
     }
   }
 
-  if (ram_state[server].max_ram != ram_state[server].free_ram) {
-    return {
-      "action"        : "free_ram_request"
-     ,"result"        : "NOK"
-     ,"failure_reason": "ERROR Servers Free RAM is less than Max RAM."
-     ,"server"        : server
-     ,"requester"     : requester
-    }
-  }
+  // if (ram_state[server].max_ram != ram_state[server].free_ram) {
+  //   return {
+  //     "action"        : "free_ram_request"
+  //    ,"result"        : "NOK"
+  //    ,"failure_reason": "ERROR Servers Free RAM (" + ram_state[server].free_ram + ") is less than Max RAM (" + ram_state[server].max_ram + ")."
+  //    ,"server"        : server
+  //    ,"requester"     : requester
+  //   }
+  // }
 
-  ram_state[server].free_ram -= ram_state[server].max_ram
+  ram_state[server].free_ram -= amount
   ram_state[server].ram_slices[requester] = {
-    "slice_amount" : ram_state[server].max_ram
+    "slice_amount" : amount
    ,"pid_filename" : ns.getRunningScript(requester).filename
   }
 
@@ -235,7 +273,7 @@ function free_ram_request(ns, server, requester) {
    ,"result"   : "OK"
    ,"requester": requester
    ,"server"   : server
-   ,"amount"   : ram_state[server].max_ram
+   ,"amount"   : amount
   }
 }
 
@@ -290,6 +328,37 @@ function free_ram_enquire(ns, server, requester) {
   }
 }
 
+function pid_on_server_enquire(ns, server, requester) {
+  if (ram_state[server] === undefined) {
+    return {
+      "action"        : "pid_on_server_enquire"
+     ,"result"        : "NOK"
+     ,"failure_reason": "ERROR Server does not exist in the RAM State"
+     ,"server"        : server
+     ,"requester"     : requester
+    }
+  }
+
+  if (ram_state[server].ram_slices[requester] === undefined) {
+    return {
+      "action"   : "pid_on_server_enquire"
+     ,"result"   : "OK"
+     ,"server"   : server
+     ,"requester": requester
+     ,"present"  : false
+    }
+  }
+  else {
+    return {
+      "action"   : "pid_on_server_enquire"
+     ,"result"   : "OK"
+     ,"server"   : server
+     ,"requester": requester
+     ,"present"  : true
+    }
+  }
+}
+
 function release_pids_ram(ns, pid_to_release) {
   for (let server in ram_state) {
     for (let pid in ram_state[server].ram_slices) {
@@ -306,16 +375,23 @@ function release_pids_ram(ns, pid_to_release) {
  * @param {NS} ns
  */
 export async function main(ns) {
-  const CONTROL_PARAMETERS    = ns.getPortHandle(1)
-  const SERVER_INFO_HANDLER   = ns.getPortHandle(3)
-  const RAM_REQUEST_HANDLER   = ns.getPortHandle(5)
-  const RAM_PROVIDE_HANDLER   = ns.getPortHandle(6)
+  const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
+  const SERVER_INFO_HANDLER   = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)
+  const RAM_REQUEST_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
+  const RAM_PROVIDE_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
 
   ns.disableLog("ALL")
 
   ns.setTitle("Manage RAM V1.0 - PID: " + ns.pid)
 
   let initialised = false
+
+  while (
+      CONTROL_PARAMETERS.empty()
+  ||  SERVER_INFO_HANDLER.empty()
+  ) {
+    await ns.sleep(10)
+  }
 
   while (true) {
 
@@ -350,19 +426,27 @@ export async function main(ns) {
     let response = {}
     switch (ram_request.action) {
       case "request_ram":
-        response = find_ram(ns, ram_request.amount, ram_request.requester)
+        if (ram_request.include_hacknet) {
+          response = await find_ram(ns, ram_request.amount, ram_request.requester, ram_request.include_hacknet)
+        }
+        else {
+          response = await find_ram(ns, ram_request.amount, ram_request.requester)
+        }
         break
       case "release_ram":
         response = release_ram(ns, ram_request.server, ram_request.amount, ram_request.requester)
         break
       case "free_ram_request":
-        response = free_ram_request(ns, ram_request.server, ram_request.requester)
+        response = free_ram_request(ns, ram_request.server, ram_request.amount, ram_request.requester)
         break
       case "free_ram_release":
         response = free_ram_release(ns, ram_request.server, ram_request.requester)
         break
       case "free_ram_enquire":
         response = free_ram_enquire(ns, ram_request.server, ram_request.requester)
+        break
+      case "pid_on_server_enquire":
+        response = pid_on_server_enquire(ns, ram_request.server, ram_request.requester)
         break
       case "death_react":
         release_pids_ram(ns, ram_request.pid)

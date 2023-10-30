@@ -1,9 +1,12 @@
+
+import { COLOUR, colourize } from "/scripts/util/colours"
+
 /** @param {NS} ns */
 export async function main(ns) {
 
   let code = "38"
   let letter = "~"
-  let print_codes = true
+  let print_codes = false
 
   ns.tail()
   let string = ""
@@ -231,4 +234,12 @@ export async function main(ns) {
   }
   ns.print("BLACK  : " + string + "\u001b[0m Red + Green + Blue")
 
+  ns.print("\nAnd now the Colour.js version")
+  for(let i = 0; i <12; i++){
+    string = ""
+    for(let j = 0; j<10; j++){
+      string = string + colourize(i,j) + "~"
+    }
+    ns.print("I: " + string)
+  }
 }
