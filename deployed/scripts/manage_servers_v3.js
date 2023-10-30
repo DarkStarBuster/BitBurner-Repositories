@@ -172,7 +172,7 @@ function child_is_running(ns, filename) {
 }
 
 /**
- * @param {NS} ns - NetScript Environment
+ * @param {import("../../.").NS} ns - NetScript Environment
  * @param {string} filename - Script to Launch
  * @param {string} server_to_target - Server to target with the script given
  * @param {NetscriptPort} ram_request_handler - Handler to request RAM
@@ -212,7 +212,7 @@ async function launch_child(ns, filename, server_to_target, ram_request_handler,
   let script_args = [
     "--target", server_to_target
   ]
-  let pid = ns.exec(filename, server_to_use, 1,...script_args)
+  let pid = ns.exec(filename, server_to_use, {threads: 1, temporary: true},...script_args)
   if (!(pid === 0)) {
     add_child_process(ns, pid, filename, server_to_use, server_to_target)
     return Promise.resolve(true)
@@ -349,7 +349,7 @@ async function check_root(ns, force_update) {
   return Promise.resolve()
 }
 
-/** @param {NS} ns */
+/** @param {import("../../.").NS} ns */
 async function check_manage(ns, control_params, bitnode_mults, server_info, ram_request_handler, ram_provide_handler) {
 
   let managed_servers = []
@@ -382,6 +382,29 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   ns.print(preping_servers.length + " Prepare Server processes found")
 
   let servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
+
+  servers.sort(
+    function(a,b){
+      let player = ns.getPlayer()
+      let server_a = ns.getServer(a)
+      let server_b = ns.getServer(b)
+      server_a.hackDifficulty = server_a.minDifficulty
+      server_a.moneyAvailable = server_a.moneyMax
+      server_b.hackDifficulty = server_b.minDifficulty
+      server_b.moneyAvailable = server_b.moneyMax
+
+      let server_a_hack_percent = ns.formulas.hacking.hackPercent(server_a, player)
+      let server_a_hack_chance  = ns.formulas.hacking.hackChance (server_a, player)
+      let server_a_weaken_time  = ns.formulas.hacking.weakenTime (server_a, player)
+      let server_b_hack_percent = ns.formulas.hacking.hackPercent(server_b, player)
+      let server_b_hack_chance  = ns.formulas.hacking.hackChance (server_b, player)
+      let server_b_weaken_time  = ns.formulas.hacking.weakenTime (server_b, player)
+
+      return (server_b_hack_percent * server_b_hack_chance * server_b.moneyMax)
+      - (server_a_hack_percent * server_a_hack_chance * server_a.moneyMax)
+    }
+  )
+
   let temp_server = []
   if (bitnode_mults["ScriptHackMoneyGain"] === 0) {
     // We gain no money from hacking. We only gain the side effects from hacks being run
@@ -406,7 +429,16 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
     // Yes if we ever get to the point where we have finished "upgrading" a server via hacknet hashses
     // we won't deal with the hacknet manager switching hash targets well. But let's cross that bridge
     // once we actually get there, shall we?
+    let first_pushed = false
+    for (let server of servers) {
+      if (temp_server.includes(server)) {continue}
+      if (server_info[server] === undefined) {continue}
+      if (!first_pushed) {temp_server.push(server); first_pushed = true;}
+      if (server === target && !(time === Infinity) && time < (1/control_params.hacknet.threshold) && !temp_server.includes(server)) {temp_server.push(server)}
+      if (ns.getServer(server).moneyMax >= 1e12 && !temp_server.includes(server)) {temp_server.push(server)}
+    }
     servers = temp_server
+    ns.print(servers)
   }
   else if (server_info["home"].max_ram < control_params.hacker.consider_early) {
     if (servers.includes("n00dles")  && server_info["n00dles"]) temp_server.push("n00dles")
