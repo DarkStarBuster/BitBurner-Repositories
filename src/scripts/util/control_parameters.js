@@ -5,12 +5,12 @@ let control_parameters = {}
 function init() {
   control_parameters = {
     home: {
-      free_amt: 16
+      free_amt: 8
     },
     hacker: {
       consider_early: 64, // Amount of RAM on home that we considers being below as being "early" in a run
       hack_batch_time_interval: 125, // Milliseconds between hack batches
-      total_hack_batch_limit: 10000 / 4, // <Total number of scripts we want running at any one time> / <4 as each hack batch runs 4 scripts>
+      total_hack_batch_limit: 14000 / 4, // <Total number of scripts we want running at any one time> / <4 as each hack batch runs 4 scripts>
       min_hack_threads_for_batch: 1 // Minimum number of Hack Threads to use when initially constructing a hack batch
     },
     pserv: { // Parameters for the Personal Server Manager

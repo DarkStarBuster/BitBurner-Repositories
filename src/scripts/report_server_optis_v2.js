@@ -116,14 +116,13 @@ export async function main(ns) {
     // Holds the array of strings for the table
     let table_strings = [""]
     // Number of rows in the table
-    let table_length = 24
+    let table_length = 36
 
     for (let i = 0; i < table_length-1; i++){
       table_strings.push("")
     } 
   
     ns.clearLog()
-    ns.print("Hello " + value)
     value += 1
 
     let max_server_length = 0

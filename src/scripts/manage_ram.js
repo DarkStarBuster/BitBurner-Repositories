@@ -171,9 +171,17 @@ async function find_ram(ns, ram_amount, ram_requester, include_hacknet = false) 
       ram_state[server_to_reserve_on].ram_slices[ram_requester].slice_amount += ram_amount
     }
     else {
-      ram_state[server_to_reserve_on].ram_slices[ram_requester] = {
-        "slice_amount" : ram_amount,
-        "pid_filename" : ns.getRunningScript(ram_requester).filename
+      if (ns.getRunningScript(ram_requester)) {
+        ram_state[server_to_reserve_on].ram_slices[ram_requester] = {
+          "slice_amount" : ram_amount,
+          "pid_filename" : ns.getRunningScript(ram_requester).filename
+        }
+      }
+      else {
+        ram_state[server_to_reserve_on].ram_slices[ram_requester] = {
+          "slice_amount": ram_amount,
+          "pid_filename": "Unknown - Process Killed during allocation"
+        }
       }
     }
     ns.print("Returning RAM Request Response from " + ram_requester)
@@ -372,7 +380,7 @@ function release_pids_ram(ns, pid_to_release) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("../../.").NS} ns
  */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
@@ -475,11 +483,16 @@ export async function main(ns) {
     }
 
     if (!(ram_request.action === "death_react")) {
-      ns.print("Attempting to Write response to Handler.")
-      while(!RAM_PROVIDE_HANDLER.tryWrite(JSON.stringify(response))) {
-        await ns.sleep(50)
+      if (ns.isRunning(parseInt(response.requester))) {
+        ns.print("Attempting to Write response to Handler.")
+        while(!RAM_PROVIDE_HANDLER.tryWrite(JSON.stringify(response))) {
+          await ns.sleep(50)
+        }
+        ns.print("Response written.")
       }
-      ns.print("Response written.")
+      else {
+        ns.print("Requester killed while awaiting our response.")
+      }
     }
 
     await ns.sleep(50)

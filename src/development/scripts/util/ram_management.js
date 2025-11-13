@@ -1,39 +1,35 @@
 import { PORT_IDS } from "/scripts/util/port_management"
 import { COLOUR, colourize } from "/scripts/util/colours"
-
-export function round_ram_cost(number, decimal_places = 2) {
-  let power = Math.pow(10, decimal_places)
-  let num   = (number * power) * (1 - Math.sign(number) * Number.EPSILON)
-  return Math.ceil(num) / power
-}
+import { round_ram_cost } from "/scripts/util/rounding"
 
 /**
- * @param {NS} ns
+ * @param {import("../../../.").NS} ns
  * @param {number} ram_amount
  */
 export async function request_ram(ns, ram_amount, include_hacknet = false) {
   const RAM_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
   const RAM_PROVIDE_HANDLER = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
-  const LOG_COLOUR = colourize(COLOUR.AZURE,9)
-  const DEF_COLOUR = colourize(COLOUR.DEFAULT)
+  // const LOG_COLOUR = colourize(COLOUR.AZURE,9)
+  // const DEF_COLOUR = colourize(COLOUR.DEFAULT)
 
   // Rounding away any floating point imprecision using Number.EPSILON
   let rounded_ram = round_ram_cost(ram_amount)
   //ns.print(LOG_COLOUR + "RAM: Rounded RAM from " + ram_amount + " to " + rounded_ram)
-  if (include_hacknet) {
-    //ns.print(LOG_COLOUR + "Include Hacknet: " + include_hacknet)
-  }
+  // if (include_hacknet) {
+  //   ns.print(LOG_COLOUR + "Include Hacknet: " + include_hacknet)
+  // }
 
   let ram_request = {
-    "action"         : "request_ram",
-    "amount"         : rounded_ram,
-    "include_hacknet": include_hacknet,
-    "requester"      : ns.pid
+    "action"         : "request_ram"
+   ,"amount"         : rounded_ram
+   ,"include_hacknet": include_hacknet
+   ,"requester"      : ns.pid
+   ,"requester_file" : ns.getScriptName()
   }
 
   //ns.print(LOG_COLOUR + "RAM: Awaiting space in RAM Request Handler to request RAM." + DEF_COLOUR)
   while(!RAM_REQUEST_HANDLER.tryWrite(JSON.stringify(ram_request))){
-    await ns.sleep(50)
+    await ns.sleep(4)
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting RAM Request Handler." + DEF_COLOUR)
 
@@ -43,8 +39,9 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
   while (awaiting_response) {
     //ns.print(LOG_COLOUR + "RAM: Wait until Provider is not empty" + DEF_COLOUR)
     while(RAM_PROVIDE_HANDLER.empty()) {
-      await ns.sleep(50)
+      await RAM_PROVIDE_HANDLER.nextWrite()
     }
+    
     ram_response = JSON.parse(RAM_PROVIDE_HANDLER.peek())
     //ns.print(LOG_COLOUR + "RAM: Provider is not empty: " + ram_response + DEF_COLOUR)
     if (parseInt(ram_response.requester) === ns.pid) {
@@ -54,7 +51,7 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
     }
     else{
       //ns.print(LOG_COLOUR + "RAM: This is not a response for us." + DEF_COLOUR)
-      await ns.sleep(50)
+      await ns.sleep(4)
     }
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting Response." + DEF_COLOUR)
@@ -77,15 +74,15 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
 }
   
 /**
- * @param {NS} ns
+ * @param {import("../../../.").NS} ns
  * @param {string} server_to_release_from 
  * @param {number} ram_amount
  */
 export async function release_ram(ns, server_to_release_from, ram_amount) {
   const RAM_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
   const RAM_PROVIDE_HANDLER = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
-  const LOG_COLOUR = colourize(COLOUR.AZURE,9)
-  const DEF_COLOUR = colourize(COLOUR.DEFAULT)
+  // const LOG_COLOUR = colourize(COLOUR.AZURE,9)
+  // const DEF_COLOUR = colourize(COLOUR.DEFAULT)
 
   // Rounding away any floating point imprecision using Number.EPSILON
   let rounded_ram = round_ram_cost(ram_amount)
@@ -100,7 +97,7 @@ export async function release_ram(ns, server_to_release_from, ram_amount) {
 
   //ns.print(LOG_COLOUR + "RAM: Awaiting space in RAM Request Handler to Release RAM.")
   while(!RAM_REQUEST_HANDLER.tryWrite(JSON.stringify(ram_request))){
-    await ns.sleep(50)
+    await ns.sleep(4)
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting RAM Request Handler." + DEF_COLOUR)
 
@@ -110,7 +107,7 @@ export async function release_ram(ns, server_to_release_from, ram_amount) {
   while (awaiting_response) {
     //ns.print(LOG_COLOUR + "RAM: Wait until Provider is not empty" + DEF_COLOUR)
     while(RAM_PROVIDE_HANDLER.empty()) {
-      await ns.sleep(50)
+      await ns.sleep(4)
     }
     ram_response = JSON.parse(RAM_PROVIDE_HANDLER.peek())
     //ns.print(LOG_COLOUR + "RAM: Provider is not empty: " + ram_response + DEF_COLOUR)
@@ -121,7 +118,7 @@ export async function release_ram(ns, server_to_release_from, ram_amount) {
     }
     else {
       //ns.print(LOG_COLOUR + "RAM: This is not a response for us." + DEF_COLOUR)
-      await ns.sleep(50)
+      await ns.sleep(4)
     }
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting Response." + DEF_COLOUR)

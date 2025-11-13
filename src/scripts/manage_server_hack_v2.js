@@ -1,5 +1,4 @@
 import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
 import { release_ram, request_ram } from "/scripts/util/ram_management"
 
 /**
@@ -27,7 +26,7 @@ async function construct_batch(ns, target_server, control_params) {
 
   // Setup Server Object for use with Formulas API
   server_info.hackDifficulty = server_info.minDifficulty
-  server_info.moneyAvailable = server_info.moneyMax
+  //if (do_hacks) {server_info.moneyAvailable = server_info.moneyMax}
 
   let batch_info = {}
 
@@ -44,7 +43,7 @@ async function construct_batch(ns, target_server, control_params) {
   hack_analyze = ns.formulas.hacking.hackPercent(server_info, player_info)
     
   money_gained = server_info.moneyMax * (hack_analyze * hack_threads)
-  if (!do_hacks) {server_info.moneyAvailable = server_info.moneyMax - money_gained}
+  if (do_hacks) {server_info.moneyAvailable = server_info.moneyMax - money_gained}
   let grow_threads = ns.formulas.hacking.growThreads(server_info, player_info, server_info.moneyMax, 1)
   while (grow_threads < 1) {
     hack_threads += 1
@@ -86,10 +85,11 @@ async function construct_batch(ns, target_server, control_params) {
     await ns.sleep(10)
   }
 
+  let delay = 50
   let weaken_hack_delay = 0
-  let hack_delay = (weaken_time - hack_time) - 50
-  let weaken_grow_delay = 100
-  let grow_delay = (weaken_time - grow_time) + 50
+  let hack_delay = (weaken_time - hack_time) - delay
+  let weaken_grow_delay = 2 * delay
+  let grow_delay = (weaken_time - grow_time) + delay
 
   // Avoid Floating Point imprecission when multiplying. I mean really.
   let ram_needed = 0
@@ -140,10 +140,9 @@ export async function main(ns) {
     ns.exit()
   }
 
-  const CONTROL_PARAMETERS    = ns.getPortHandle(1)
-  const UPDATE_HANDLER        = ns.getPortHandle(4)
-  const RAM_REQUEST_HANDLER   = ns.getPortHandle(5)
-  const RAM_PROVIDE_HANDLER   = ns.getPortHandle(6)
+  const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
+  const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+  const RAM_REQUEST_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
   
   while(CONTROL_PARAMETERS.empty()){
     await ns.sleep(50)

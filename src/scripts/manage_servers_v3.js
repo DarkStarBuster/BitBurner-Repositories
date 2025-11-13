@@ -322,6 +322,8 @@ async function check_root(ns, force_update) {
           ns.toast("Successfully Rooted \"" + server + "\"", "success", 5000)
         }
 
+        if (!ns.fileExists("/scripts/util/port_management.js" , server) || force_update) ns.scp("/scripts/util/port_management.js" , server)
+        if (!ns.fileExists("/scripts/util/ram_management.js"  , server) || force_update) ns.scp("/scripts/util/ram_management.js"  , server)
         if (!ns.fileExists("/scripts/util/weaken_v2.js"       , server) || force_update) ns.scp("/scripts/util/weaken_v2.js"       , server)
         if (!ns.fileExists("/scripts/util/grow_v2.js"         , server) || force_update) ns.scp("/scripts/util/grow_v2.js"         , server)
         if (!ns.fileExists("/scripts/util/hack_v2.js"         , server) || force_update) ns.scp("/scripts/util/hack_v2.js"         , server)
@@ -411,35 +413,35 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
     // Do not start any managers or prepers
     servers = []
   }
-  else if (
-      bitnode_mults["ScriptHackMoney"] <= 0.1 // We get 10% or less of the money we Hack from a server
-  ||  bitnode_mults["ServerMaxMoney"] <= 0.1  // Servers start with 10% or less Maximum Money
-  ) {
-    // Focus on the hacknet target only and rely on pumping hashes into making it good
-    let target = control_params.hacknet.hash_target
-    let time   = control_params.hacknet.hash_time
-    if (
-        servers.includes(target)
-    &&  server_info[target]
-    &&  !(time === Infinity)
-    &&  time < (1/control_params.hacknet.threshold)
-    ) {
-      temp_server.push(target)
-    }
-    // Yes if we ever get to the point where we have finished "upgrading" a server via hacknet hashses
-    // we won't deal with the hacknet manager switching hash targets well. But let's cross that bridge
-    // once we actually get there, shall we?
-    let first_pushed = false
-    for (let server of servers) {
-      if (temp_server.includes(server)) {continue}
-      if (server_info[server] === undefined) {continue}
-      if (!first_pushed) {temp_server.push(server); first_pushed = true;}
-      if (server === target && !(time === Infinity) && time < (1/control_params.hacknet.threshold) && !temp_server.includes(server)) {temp_server.push(server)}
-      if (ns.getServer(server).moneyMax >= 1e12 && !temp_server.includes(server)) {temp_server.push(server)}
-    }
-    servers = temp_server
-    ns.print(servers)
-  }
+  // else if (
+  //     bitnode_mults["ScriptHackMoney"] <= 0.1 // We get 10% or less of the money we Hack from a server
+  // ||  bitnode_mults["ServerMaxMoney"] <= 0.1  // Servers start with 10% or less Maximum Money
+  // ) {
+  //   // Focus on the hacknet target only and rely on pumping hashes into making it good
+  //   let target = control_params.hacknet.hash_target
+  //   let time   = control_params.hacknet.hash_time
+  //   if (
+  //       servers.includes(target)
+  //   &&  server_info[target]
+  //   &&  !(time === Infinity)
+  //   &&  time < (1/control_params.hacknet.threshold)
+  //   ) {
+  //     temp_server.push(target)
+  //   }
+  //   // Yes if we ever get to the point where we have finished "upgrading" a server via hacknet hashses
+  //   // we won't deal with the hacknet manager switching hash targets well. But let's cross that bridge
+  //   // once we actually get there, shall we?
+  //   let first_pushed = false
+  //   for (let server of servers) {
+  //     if (temp_server.includes(server)) {continue}
+  //     if (server_info[server] === undefined) {continue}
+  //     if (!first_pushed) {temp_server.push(server); first_pushed = true;}
+  //     if (server === target && !(time === Infinity) && time < (1/control_params.hacknet.threshold) && !temp_server.includes(server)) {temp_server.push(server)}
+  //     if (ns.getServer(server).moneyMax >= 1e12 && !temp_server.includes(server)) {temp_server.push(server)}
+  //   }
+  //   servers = temp_server
+  //   ns.print(servers)
+  // }
   else if (server_info["home"].max_ram < control_params.hacker.consider_early) {
     if (servers.includes("n00dles")  && server_info["n00dles"]) temp_server.push("n00dles")
     if (servers.includes("joesguns") && server_info["joesguns"]) temp_server.push("joesguns")
@@ -530,6 +532,13 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
       if (!successful) {
         ns.print("Failed to launch manager for " + server + ".")
       }
+    }
+  }
+
+  if (!preping_servers.includes(control_params.hacknet.hash_target) && servers_to_prep[0] === control_params.hacknet.hash_target) {
+    for (let server of preping_servers) {
+      ns.print("Killing preper for " + server + " as we need space to prep the hash target")
+      await kill_child(ns, server, ram_request_handler, ram_provide_handler)
     }
   }
 

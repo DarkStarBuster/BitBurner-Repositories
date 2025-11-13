@@ -1,5 +1,4 @@
 import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
 import { release_ram, request_ram } from "/scripts/util/ram_management"
 
 /** @param {import("../../.").NS} ns */
@@ -8,10 +7,9 @@ export async function main(ns) {
   const arg_flags = ns.flags([
     ["target",""]
   ])
-  const SERVER_INFO_HANDLER = ns.getPortHandle(3)
-  const UPDATE_HANDLER      = ns.getPortHandle(4)
-  const RAM_REQUEST_HANDLER = ns.getPortHandle(5)
-  const RAM_PROVIDE_HANDLER = ns.getPortHandle(6)
+  const SERVER_INFO_HANDLER = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)
+  const UPDATE_HANDLER      = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+  const RAM_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
 
   ns.disableLog("ALL")
   ns.enableLog("exec")
