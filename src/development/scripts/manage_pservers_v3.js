@@ -22,7 +22,7 @@ export async function main(ns) {
 
   ns.disableLog("getServerMoneyAvailable")
 
-  ns.setTitle("Manage Personal Servers V3.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Personal Servers V3.0 - PID: " + ns.pid)
   
   // Multiplier to Cost of New Server/Upgrading Server no matter the RAM
   let pserv_cost_mult         = bitnode_mults["PurchasedServerCost"]

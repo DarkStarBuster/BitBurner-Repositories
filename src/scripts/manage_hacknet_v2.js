@@ -1,11 +1,11 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { PORT_IDS } from "/src/scripts/util/port_management"
+import { COLOUR, colourize } from "/src/scripts/util/colours"
 
 let prior_tail_width = 0
 let prior_tail_height = 0
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} hacknet_node_money_mult
  */
 function gain_per_level(ns, hacknet_node_money_mult) {
@@ -13,7 +13,7 @@ function gain_per_level(ns, hacknet_node_money_mult) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} level
  * @param {number} ram
  * @param {number} cores
@@ -24,7 +24,7 @@ function gain_from_level_upgrade(ns, level, ram, cores, hacknet_node_money_mult)
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} level
  * @param {number} ram
  * @param {number} cores
@@ -35,7 +35,7 @@ function gain_from_ram_upgrade(ns, level, ram, cores, hacknet_node_money_mult) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} level
  * @param {number} ram
  * @param {number} cores
@@ -46,7 +46,7 @@ function gain_from_core_upgrade(ns, level, ram, cores, hacknet_node_money_mult) 
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {NodeStats[]} stats_array 
  * @returns 
  */
@@ -101,19 +101,19 @@ function format_stats(ns, stats_array) {
     resize = true
   }
   if (resize) {
-    ns.tail()
-    ns.resizeTail(tail_width, tail_height)
+    ns.ui.openTail()
+    ns.ui.resizeTail(tail_width, tail_height)
   }
 
   return table_output
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   ns.disableLog("sleep")
   ns.disableLog("getServerMoneyAvailable")
 
-  ns.setTitle("Manage Hacknet V2.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Hacknet V2.0 - PID: " + ns.pid)
 
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)

@@ -17,7 +17,7 @@ function log_attempt_result(ns,contract_info,result) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_flpf_cct(ns, contract_info) {
@@ -37,7 +37,7 @@ function solve_flpf_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_swms_cct(ns, contract_info) {
@@ -87,7 +87,7 @@ function solve_swms_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_twts_cct(ns, contract_info) {
@@ -124,7 +124,7 @@ function solve_twts_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_sm_cct(ns, contract_info) {
@@ -185,7 +185,7 @@ function solve_sm_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_ajg_cct(ns, contract_info) {
@@ -201,7 +201,7 @@ function solve_ajg_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_ajg2_cct(ns, contract_info) {
@@ -266,7 +266,7 @@ function recur_through_triangle(ns, triangle , cache, level, index) {
 }
 
 /**
- * @param {NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {Object} contract_info 
  */
 function solve_mpsiat_cct(ns, contract_info) {
@@ -290,7 +290,7 @@ function factorial(start) {
 }
 
 /**
- * @param {NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {Object} contract_info 
  */
 function solve_upiag1_cct(ns, contract_info) {
@@ -306,7 +306,7 @@ function solve_upiag1_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {Object} contract_info 
  */
 function solve_upiag2_cct(ns, contract_info) {
@@ -508,7 +508,7 @@ function solve_moi_cct(ns, contract_info) {
   log_attempt_result(ns, contract_info, string)
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const arg_flags = ns.flags([ 
     ["contract_info",""]

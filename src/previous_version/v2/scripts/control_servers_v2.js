@@ -59,14 +59,14 @@ let all_server_status = {}
  * }
  */
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function disable_logs(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  */
 function kill_all_other_processes(ns) {
   let rooted_servers = scan_for_servers(ns,{"is_rooted":true,"include_home":true})
@@ -85,7 +85,7 @@ function kill_all_other_processes(ns) {
   }
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function populate_all_server_status(ns) {
   let rooted_servers = scan_for_servers(ns,{"is_rooted":true,"include_home":true})
 
@@ -130,7 +130,7 @@ function populate_all_server_status(ns) {
 }
 
 /**
- *  @param {NS} ns
+ *  @param {import("@ns").NS} ns
  *  @param {NetscriptPort} handler
  */
 function start_managers(ns, handler) {
@@ -210,7 +210,7 @@ function start_managers(ns, handler) {
   }
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS = ns.getPortHandle(1)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)

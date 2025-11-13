@@ -1,4 +1,4 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
 
 const HACK_BATCH_LIMIT = 30
 const HACK_BATCH_TIME_LIMIT = 2000
@@ -22,7 +22,7 @@ const RAM_INFO = {
   // ...
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function disable_logging(ns){
   ns.disableLog("ALL")
   ns.enableLog("exec")
@@ -30,7 +30,7 @@ function disable_logging(ns){
 
 /**
  * 
- * @param {NS} ns NetScript Environment
+ * @param {import("@ns").NS} ns NetScript Environment
  * @param {number} ram_amount RAM amount to request
  * @param {NetscriptPort} ram_request_handler Handler for the Requests
  * @param {NetscriptPort} ram_provide_handler Handler for the Response
@@ -86,7 +86,7 @@ async function request_ram(ns, ram_amount, ram_request_handler, ram_provide_hand
 
 /**
  * 
- * @param {NS} ns NetScript Environment
+ * @param {import("@ns").NSS} ns NetScript Environment
  * @param {string} server_to_release_from 
  * @param {number} ram_amount 
  * @param {NetscriptPort} ram_request_handler 
@@ -143,7 +143,7 @@ function add_child_process(ns, pid, filename, server, target) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename 
  * @returns {boolean}
  */
@@ -172,7 +172,7 @@ function child_is_running(ns, filename) {
 }
 
 /**
- * @param {import("../../.").NS} ns - NetScript Environment
+ * @param {import("@ns").NS} ns - NetScript Environment
  * @param {string} filename - Script to Launch
  * @param {string} server_to_target - Server to target with the script given
  * @param {NetscriptPort} ram_request_handler - Handler to request RAM
@@ -227,7 +227,7 @@ async function launch_child(ns, filename, server_to_target, ram_request_handler,
 
 /**
  * Kills a child process that targets the given target
- * @param {NS} ns NetScript Environment
+ * @param {import("@ns").NS} ns NetScript Environment
  * @param {string} childs_target Target of the process we want to kill
  * @param {NetscriptPort} ram_request_handler
  * @param {NetscriptPort} ram_provide_handler
@@ -261,7 +261,7 @@ async function kill_child(ns, childs_target, ram_request_handler, ram_provide_ha
 }
 
 /** 
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {boolean} force_update
  */
 async function check_root(ns, force_update) {
@@ -351,7 +351,7 @@ async function check_root(ns, force_update) {
   return Promise.resolve()
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 async function check_manage(ns, control_params, bitnode_mults, server_info, ram_request_handler, ram_provide_handler) {
 
   let managed_servers = []
@@ -563,7 +563,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info, ram_
   return Promise.resolve()
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(1)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
@@ -578,7 +578,7 @@ export async function main(ns) {
     delete RAM_INFO[server]
   }
 
-  ns.setTitle("Manage Servers V3.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Servers V3.0 - PID: " + ns.pid)
 
   while (
       CONTROL_PARAMETERS.empty()

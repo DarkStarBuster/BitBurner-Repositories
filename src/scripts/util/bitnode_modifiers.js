@@ -61,9 +61,3 @@ export const bitnode_mults = {
   // No idea
   GangUniqueAugs            : {larger: true, smaller: false},
 }
-
-
-/** @param {NS} ns */
-export async function main(ns) {
-
-}

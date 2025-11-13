@@ -60,7 +60,7 @@ function we_can_solve_this(ns, file, server) {
   }
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const TESTING = false
 

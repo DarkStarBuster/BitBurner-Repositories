@@ -4,14 +4,14 @@ import { scan_for_servers } from "/scripts/util/scan_for_servers"
 const HACK_BATCH_LIMIT = 30
 const HACK_BATCH_TIME_LIMIT = 2000
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function disable_logging(ns) {
 
   ns.disableLog("ALL")
 
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
 
   disable_logging(ns)
@@ -25,9 +25,9 @@ export async function main(ns) {
     }
   )
 
-  ns.tail()
-  ns.resizeTail(1400,640)
-  ns.moveTail(100,100)
+  ns.ui.openTail()
+  ns.ui.resizeTail(1400,640)
+  ns.ui.moveTail(100,100)
 
   while(true) {
 

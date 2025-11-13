@@ -1,6 +1,6 @@
 const ONLY_CALC_NO_PURCHASE = false
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function gain_per_level(ns) {
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
   let bitnode_info = JSON.parse(BITNODE_MULTS_HANDLER.peek())
@@ -9,7 +9,7 @@ function gain_per_level(ns) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} level
  * @param {number} ram
  * @param {number} cores
@@ -20,7 +20,7 @@ function gain_from_level_upgrade(ns, level, ram, cores) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} level
  * @param {number} ram
  * @param {number} cores
@@ -30,7 +30,7 @@ function gain_from_ram_upgrade(ns, level, ram, cores) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} level
  * @param {number} ram
  * @param {number} cores
@@ -39,7 +39,7 @@ function gain_from_core_upgrade(ns, level, ram, cores) {
   return (level*gain_per_level(ns)) * Math.pow(1.035,ram-1) * (1/6)
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   ns.disableLog("sleep")
   ns.disableLog("getServerMoneyAvailable")

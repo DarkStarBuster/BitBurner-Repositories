@@ -6,7 +6,7 @@ let prior_tail_width = 0
 let prior_tail_height = 0
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {NodeStats[]} stats_array 
  * @returns 
  */
@@ -61,15 +61,15 @@ function format_stats(ns, stats_array) {
     resize = true
   }
   if (resize) {
-    ns.tail()
-    ns.resizeTail(tail_width, tail_height)
+    ns.ui.openTail()
+    ns.ui.resizeTail(tail_width, tail_height)
   }
 
   return table_output
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  */
 function decide_target_of_hashes(ns) {
   /**
@@ -136,12 +136,11 @@ function decide_target_of_hashes(ns) {
   return servers[0]
 }
 
-/** @param {import("../../.").NS} ns */
-// /** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL")
 
-  ns.setTitle("Manage Hacknet V3.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Hacknet V3.0 - PID: " + ns.pid)
 
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)

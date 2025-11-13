@@ -24,7 +24,7 @@
 const HACK_BATCH_LIMIT = 1000
 const HACK_BATCH_TIME_LIMIT = 2000
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const arg_flags = ns.flags([
     ["target",""]

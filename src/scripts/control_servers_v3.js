@@ -1,8 +1,8 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
-import { release_ram, request_ram } from "/scripts/util/ram_management"
-import { append_to_file, delete_file, rename_file } from "/scripts/util/file_management"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers.js"
+import { PORT_IDS } from "/src/scripts/util/port_management.js"
+import { COLOUR, colourize } from "/src/scripts/util/colours.js"
+import { release_ram, request_ram } from "/src/scripts/util/ram_management.js"
+import { append_to_file, delete_file, rename_file } from "/src/scripts/util/file_management.js"
 
 const LOG_COLOUR = colourize(COLOUR.MINT,9)
 const DEF_COLOUR = colourize(COLOUR.DEFAULT)
@@ -61,6 +61,7 @@ let all_server_stats = {}
  * }
  */
 
+/** @param {import("@ns").NS} ns */
 function init(ns) {
   disable_logs(ns)
   init_log(ns)
@@ -71,14 +72,14 @@ function init(ns) {
   all_server_stats = {}
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function disable_logs(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
 }
 
 /**
- * @param {NS} ns 
+ * @param {import("@ns").NS} ns 
  */
 function init_log(ns){
   if (ns.fileExists(PRIOR_FILENAME)) {
@@ -90,7 +91,7 @@ function init_log(ns){
 }
 
 /**
- * @param {NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {string} message 
  */
 function log(ns, message) {
@@ -99,12 +100,12 @@ function log(ns, message) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  */
 function kill_all_other_processes(ns) {
   let rooted_servers = scan_for_servers(ns,{"is_rooted":true,"include_home":true})
   let cnt = 0
-  // This function is called soon after control_servers_v2.js is started.
+  // This function is called soon after control_servers_v3.js is started.
   // We should have a clean slate to build from, so kill all possible actions on all servers apart from this process
   for (let server of rooted_servers) {
     let process_ids = ns.ps(server)
@@ -124,7 +125,7 @@ function kill_all_other_processes(ns) {
 /**
  * Update a single servers static statistics in all_server_stats
  * 
- * @param {NS} ns - Netscript Environment
+ * @param {import("@ns").NS} ns - Netscript Environment
  * @param {string} server - Server name we want to update the stats of
  * @param {NetscriptPort} handler - Optional, handler that will handle the port writing, needs to be provided unless defer_write is true
  * @param {boolean} defer_write - Optional, pass true if the calling function will use the handler itself to write to the port
@@ -150,7 +151,7 @@ function update_server_stats(ns, server, handler = undefined, defer_write = fals
 /**
  * Update all servers static statistics in all_server_stats
  * 
- * @param {NS} ns - Netscript Environment
+ * @param {import("@ns").NS} ns - Netscript Environment
  * @param {NetscriptPort} handler - Handler that will handle the port writing
  */
 function populate_all_server_stats(ns, handler) {
@@ -165,7 +166,7 @@ function populate_all_server_stats(ns, handler) {
 }
 
 /**
- * @param {NS} ns Netscript Environment
+ * @param {import("@ns").NS} ns Netscript Environment
  * @param {NetscriptPort} control_param_handler 
  * @param {NetscriptPort} bitnode_mults_handler
  */
@@ -196,7 +197,7 @@ async function populate_control_and_bitnode_stats(ns, control_param_handler, bit
 /**
  * Start the RAM Managing process
  * 
- * @param {NS} ns - Netscript Environment
+ * @param {import("@ns").NS} ns - Netscript Environment
  * @param {NetscriptPort} ram_request_handler - Port that handles RAM requests
  * @param {NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
  */
@@ -255,7 +256,7 @@ async function start_ram_manager(ns, ram_request_handler, ram_provide_handler) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} pid 
  * @param {string} filename 
  * @param {string} server
@@ -270,7 +271,7 @@ function add_child_process(ns, pid, filename, server) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import(import("@ns").NS} ns
  * @param {string} filename 
  * @returns {boolean}
  */
@@ -302,7 +303,7 @@ function child_is_running(ns, filename) {
 }
 /**
  * 
- * @param {NS} ns - NetScript Environment
+ * @param {import("@ns").NS} ns - NetScript Environment
  * @param {string} filename - Script to Launch
  * @param {NetscriptPort} ram_request_handler - Handler to request RAM
  * @param {NetscriptPort} ram_provide_handler - Handler to listen for provided RAM
@@ -337,11 +338,11 @@ async function launch_child(ns, filename, ram_request_handler, ram_provide_handl
 }
 
 /**
- *  @param {NS} ns
+ *  @param {import("@ns").NS} ns
  *  @param {NetscriptPort} handler
  */
 async function start_managers(ns, ram_request_handler, ram_provide_handler) {
-  ns.tail()
+  ns.ui.openTail()
   log(ns, "Calculate amount of RAM we need for our managers.")
   let ram_needed = 0
   ram_needed += ns.getScriptRam("/scripts/util/control_parameters.js")
@@ -436,7 +437,7 @@ async function start_managers(ns, ram_request_handler, ram_provide_handler) {
   return Promise.resolve()
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAM_HANDLER = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
@@ -447,7 +448,8 @@ export async function main(ns) {
 
   init(ns)
 
-  ns.setTitle("Control Servers V3.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Control Servers V3.0 - PID: " + ns.pid)
+  
 
   CONTROL_PARAM_HANDLER.clear()
   BITNODE_MULTS_HANDLER.clear()

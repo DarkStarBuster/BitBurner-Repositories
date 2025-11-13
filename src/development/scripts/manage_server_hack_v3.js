@@ -103,7 +103,7 @@ export async function main(ns) {
   ns.disableLog("ALL")
   //ns.enableLog("exec")
 
-  ns.setTitle("Manage Server Hacking V3.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
+  ns.ui.setTailTitle("Manage Server Hacking V3.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
 
   if (arg_flags.target == "") {
     ns.tprint("No Target Server specified for manage_server.js")

@@ -1,5 +1,5 @@
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  * @param {any} result
  */
@@ -17,7 +17,7 @@ function log_attempt_result(ns,contract_info,result) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_flpf_cct(ns, contract_info) {
@@ -37,7 +37,7 @@ function solve_flpf_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_swms_cct(ns, contract_info) {
@@ -88,7 +88,7 @@ function solve_swms_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_twts_cct(ns, contract_info) {
@@ -125,7 +125,7 @@ function solve_twts_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_sm_cct(ns, contract_info) {
@@ -182,7 +182,7 @@ function solve_sm_cct(ns, contract_info) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  */
 function solve_ajg_cct(ns, contract_info) {
@@ -199,7 +199,7 @@ function solve_ajg_cct(ns, contract_info) {
 
 
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const UPDATE_HANDLER = ns.getPortHandle(4)
   const arg_flags = ns.flags([ 

@@ -409,7 +409,7 @@ export async function main(ns) {
     delete RAM_INFO[server]
   }
 
-  ns.setTitle("Manage Hacking V4.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Hacking V4.0 - PID: " + ns.pid)
 
   while (
       CONTROL_PARAM_HANDLER.empty()

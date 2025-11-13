@@ -1,4 +1,4 @@
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const UPDATE_HANDLER = ns.getPortHandle(4)
 

@@ -1,4 +1,4 @@
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   var hack_dictionary = {
     "brute": ns.fileExists("BruteSSH.exe"),

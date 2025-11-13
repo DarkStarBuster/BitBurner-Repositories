@@ -1,11 +1,11 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { PORT_IDS } from "/src/scripts/util/port_management"
+import { COLOUR, colourize } from "/src/scripts/util/colours"
 
 let ram_state = {}
 const IGNORE_LIST = ["hacknet"]
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {NetscriptPort} server_info_handler
  */
 function initialise_ram_manager(ns, server_info_handler, control_parameters) {
@@ -40,7 +40,7 @@ function initialise_ram_manager(ns, server_info_handler, control_parameters) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {NetscriptPort} server_info_handler
  */
 function update_max_ram_state(ns, server_info_handler) {
@@ -73,6 +73,7 @@ function update_max_ram_state(ns, server_info_handler) {
 }
 
 /**
+ * @param {import("@ns").NS} ns
  * @param {number} ram_amount
  * @param {number} ram_requester
  * @returns {Object}
@@ -380,7 +381,7 @@ function release_pids_ram(ns, pid_to_release) {
 }
 
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
@@ -390,7 +391,7 @@ export async function main(ns) {
 
   ns.disableLog("ALL")
 
-  ns.setTitle("Manage RAM V1.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage RAM V1.0 - PID: " + ns.pid)
 
   let initialised = false
 

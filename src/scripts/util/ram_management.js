@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/scripts/util/port_management"
+import { PORT_IDS } from "/src/scripts/util/port_management"
 
 export function round_ram_cost(number, decimal_places = 2) {
   let power = Math.pow(10, decimal_places)
@@ -7,7 +7,7 @@ export function round_ram_cost(number, decimal_places = 2) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} ram_amount
  */
 export async function request_ram(ns, ram_amount, include_hacknet = false) {
@@ -74,7 +74,7 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
 }
   
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} server_to_release_from 
  * @param {number} ram_amount
  */

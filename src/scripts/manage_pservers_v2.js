@@ -1,7 +1,7 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { PORT_IDS } from "/src/scripts/util/port_management"
+import { COLOUR, colourize } from "/src/scripts/util/colours"
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
@@ -19,7 +19,7 @@ export async function main(ns) {
 
   ns.disableLog("getServerMoneyAvailable")
 
-  ns.setTitle("Manage Personal Servers V2.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Personal Servers V2.0 - PID: " + ns.pid)
   
   // Multiplier to Cost of New Server/Upgrading Server no matter the RAM
   let pserv_cost_mult         = bitnode_mults["PurchasedServerCost"]

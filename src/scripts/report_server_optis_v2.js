@@ -1,17 +1,17 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
 
 // CONSTS
 const HACK_BATCH_LIMIT = 30
 const HACK_BATCH_TIME_LIMIT = 2000
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function disable_logging(ns) {
 
   ns.disableLog("ALL")
 
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(1)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
@@ -107,9 +107,9 @@ export async function main(ns) {
     }
   )
 
-  ns.tail()
-  ns.resizeTail(1550,640)
-  ns.moveTail(300,100)
+  ns.ui.openTail()
+  ns.ui.resizeTail(1550,640)
+  ns.ui.moveTail(300,100)
 
   while(true) {
 

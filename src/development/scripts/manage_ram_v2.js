@@ -357,7 +357,7 @@ export async function main(ns) {
 
   ns.disableLog("ALL")
 
-  ns.setTitle("Manage RAM V2.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage RAM V2.0 - PID: " + ns.pid)
 
   let initialised = false
 

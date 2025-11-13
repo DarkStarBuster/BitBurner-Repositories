@@ -1,7 +1,7 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { release_ram, request_ram } from "/scripts/util/ram_management"
+import { PORT_IDS } from "/src/scripts/util/port_management"
+import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const our_pid   = ns.pid
   const arg_flags = ns.flags([
@@ -14,7 +14,7 @@ export async function main(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
 
-  ns.setTitle("Manage Server Preparation V2.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
+  ns.ui.setTailTitle("Manage Server Preparation V2.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
 
   if (arg_flags.target == "") {
     ns.tprint("No Target Server specified for manage_server.js")

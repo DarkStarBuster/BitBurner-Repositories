@@ -2,7 +2,7 @@ const DEPTH_LIMIT = 50
 
 
 /**
- * @param {NS} ns - NetScript environment
+ * @param {import("@ns").NS} ns - NetScript environment
  * @param {string} server - Server to scan from
  * @param {Object} filters - Filters to apply (AND logic applies if multiple are definted)
  * @param {string[]} servers - Servers we have already visited
@@ -71,7 +71,7 @@ function scan_for_servers_recur(ns, server, filters = {}, servers = [], results 
 /**
  * Always starts from "home".
  * 
- * @param {NS} ns - NetScript environment
+ * @param {import("@ns").NS} ns - NetScript environment
  * @param {Object} filters - Filters to apply (AND logic applies if multiple are definted)
  * @return {string[]}
  */

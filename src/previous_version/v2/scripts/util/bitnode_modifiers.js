@@ -63,7 +63,7 @@ export const bitnode_mults = {
 }
 
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
 
 }

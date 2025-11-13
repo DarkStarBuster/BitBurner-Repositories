@@ -383,7 +383,7 @@ async function start_managers(ns) {
   return Promise.resolve()
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAM_HANDLER = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
@@ -394,7 +394,7 @@ export async function main(ns) {
 
   init(ns)
 
-  ns.setTitle("Control Script V4.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Control Script V4.0 - PID: " + ns.pid)
 
   CONTROL_PARAM_HANDLER.clear()
   BITNODE_MULTS_HANDLER.clear()

@@ -1,6 +1,6 @@
 /** Designed to work with scripts/control_servers_v2 */
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const arg_flags = ns.flags([
     ["server",""],

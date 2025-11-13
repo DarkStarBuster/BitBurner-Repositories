@@ -1,6 +1,6 @@
 /** Designed to be used by manage_free_ram.js */
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const arg_flags = ns.flags([
     ["target",""],

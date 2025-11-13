@@ -29,7 +29,7 @@ import {scan_for_servers} from "/scripts/util/scan_for_servers"
 // Encryption II: Vigenère Cipher
 
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const UPDATE_HANDLER = ns.getPortHandle(4)
   const TESTING = true

@@ -1,4 +1,4 @@
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAM_HANDLER = ns.getPortHandle(1)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)

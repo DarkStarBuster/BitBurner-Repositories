@@ -4,7 +4,7 @@ const HACK_BATCH_LIMIT = 30
 const HACK_BATCH_TIME_LIMIT = 2000
 const TOTAL_HACK_BATCH_LIMIT = (6000 / 4) // <Total number of scripts we want running at any one time> / <4 as each hack batch runs 4 scripts>
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function disable_logging(ns){
   ns.disableLog("sleep")
   ns.disableLog("scan")
@@ -24,7 +24,7 @@ function disable_logging(ns){
 }
 
 /** 
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {boolean} force_update
  */
 async function check_root(ns, force_update) {
@@ -111,7 +111,7 @@ async function check_root(ns, force_update) {
 
 
 /**
- *  @param {NS} ns
+ *  @param {import("@ns").NS} ns
  *  @param {string} target
  */
 function request_prepper(ns, target) {
@@ -131,7 +131,7 @@ function request_prepper(ns, target) {
 
 
 /**
- *  @param {NS} ns
+ *  @param {import("@ns").NS} ns
  *  @param {string} target
  */
 function request_manager(ns, target) {
@@ -149,7 +149,7 @@ function request_manager(ns, target) {
   UPDATE_HANDLER.write(JSON.stringify(update))
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 async function check_manage(ns) {
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
   const SERVER_INFO_HANDLER = ns.getPortHandle(3)
@@ -315,7 +315,7 @@ async function check_manage(ns) {
   ns.print("Finished requesting new manager processes")
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   // Disable logging of things in this script
   disable_logging(ns)

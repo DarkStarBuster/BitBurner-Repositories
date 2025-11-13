@@ -237,7 +237,7 @@ export async function main(ns) {
   ns.enableLog("exec")
   ns.enableLog("kill")
 
-  ns.setTitle("Manage Free RAM V3.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Free RAM V3.0 - PID: " + ns.pid)
   
   while (
       CONTROL_PARAMETERS.empty()

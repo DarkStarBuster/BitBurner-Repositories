@@ -47,7 +47,7 @@
  * }
  */
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const arg_flags = ns.flags([
     ["target",""]

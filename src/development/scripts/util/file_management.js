@@ -4,7 +4,7 @@ const LOG_COLOUR = colourize(COLOUR.PURPLE, 9)
 const DEFAULT_COLOUR = colourize(COLOUR.DEFAULT)
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename
  */
 export function delete_file(ns, filename) {
@@ -12,7 +12,7 @@ export function delete_file(ns, filename) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename
  */
 export function clear_file(ns, filename) {
@@ -20,7 +20,7 @@ export function clear_file(ns, filename) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename
  */
 export function rename_file(ns, filename, new_name) {
@@ -28,7 +28,7 @@ export function rename_file(ns, filename, new_name) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename
  * @param {string} line
  */

@@ -1,6 +1,6 @@
-import {COLOUR, colourize} from "/scripts/util/colours.js"
-import {bitnode_mults} from "/scripts/util/bitnode_modifiers.js"
-import {scan_for_servers} from "/scripts/util/scan_for_servers.js"
+import {COLOUR, colourize} from "/src/scripts/util/colours.js"
+import {bitnode_mults} from "/src/scripts/util/bitnode_modifiers.js"
+import {scan_for_servers} from "/src/scripts/util/scan_for_servers.js"
 
 /**
  * Guess who didn't know that string.padStart and string.padEnd existed?
@@ -18,7 +18,7 @@ function pad_str(string, len , char){
   return String(actual_pad + string).slice(-len)
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 function report_server_info_from_port(ns, server_to_report){
   const SERVER_INFO_HANDLER = ns.getPortHandle(3)
 
@@ -261,7 +261,7 @@ function report_server_info_from_port(ns, server_to_report){
 }
 
 /**
- * @param {NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {string[]} servers
  * @param {JSONObject} filter
  */
@@ -453,7 +453,7 @@ function display_all_bitnode_info(ns) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  */
 function display_bitnode_info(ns) {
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(2)
@@ -554,7 +554,7 @@ function port_status(value) {
 }
 
 /**
- * @param {NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string[]} servers
  * @param {string} server
  */
@@ -682,7 +682,7 @@ async function display_server_info(ns, servers, server) {
 
 }
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const arg_flags = ns.flags([ 
     ["rec_path","no"],

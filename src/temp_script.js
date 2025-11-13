@@ -1,14 +1,14 @@
 
 import { COLOUR, colourize } from "/scripts/util/colours"
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
 
   let code = "38"
   let letter = "~"
   let print_codes = false
 
-  ns.tail()
+  ns.ui.openTail()
   let string = ""
   let current = ""
   for (let i = 48; i < 208; i += 16) {

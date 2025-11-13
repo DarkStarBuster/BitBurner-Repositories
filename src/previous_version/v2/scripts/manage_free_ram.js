@@ -91,7 +91,7 @@ const FIVE_PORT_SERVERS = [
   "zb-institute"
 ]
 
-/** @param {NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const SERVER_INFO_HANDLER = ns.getPortHandle(3)
   const UPDATE_HANDLER = ns.getPortHandle(4)

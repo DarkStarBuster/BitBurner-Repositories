@@ -1,7 +1,7 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { COLOUR, colourize } from "/src/scripts/util/colours"
 
-/** @param {import("../../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
 
   let servers = scan_for_servers(ns, {"include_home":false,"include_hacknet":true,"include_pserv":true})

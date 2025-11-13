@@ -1,6 +1,6 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { PORT_IDS } from "/src/scripts/util/port_management"
+import { COLOUR, colourize } from "/src/scripts/util/colours"
 
 const LOG_COLOUR = colourize(COLOUR.CYAN,9)
 const DEF_COLOUR = colourize(COLOUR.DEFAULT)
@@ -204,7 +204,7 @@ async function release_ram(ns, server, ram_request_handler, ram_provide_handler)
 
 /**
  * 
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {*} p_servers 
  * @param {*} server_to_run 
  * @param {*} server_to_check 
@@ -287,7 +287,7 @@ async function consume_ram(ns, p_servers, server_to_run, server_to_check, script
   return p_servers
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
@@ -299,7 +299,7 @@ export async function main(ns) {
   ns.enableLog("exec")
   ns.enableLog("kill")
 
-  ns.setTitle("Manage Free RAM V2.0 - PID: " + ns.pid)
+  ns.ui.setTailTitle("Manage Free RAM V2.0 - PID: " + ns.pid)
   
   while (
       CONTROL_PARAMETERS.empty()

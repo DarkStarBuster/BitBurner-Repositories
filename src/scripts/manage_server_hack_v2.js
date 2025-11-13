@@ -1,8 +1,8 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { release_ram, request_ram } from "/scripts/util/ram_management"
+import { PORT_IDS } from "/src/scripts/util/port_management"
+import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 
 /**
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {string} target_server 
  * @param {NetscriptPort} control_params 
  * @returns A batch definition.
@@ -124,7 +124,7 @@ async function construct_batch(ns, target_server, control_params) {
   return Promise.resolve(batch_info)
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const our_pid   = ns.pid
   const arg_flags = ns.flags([
@@ -133,7 +133,7 @@ export async function main(ns) {
   ns.disableLog("ALL")
   //ns.enableLog("exec")
 
-  ns.setTitle("Manage Server Hacking V2.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
+  ns.ui.setTailTitle("Manage Server Hacking V2.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
 
   if (arg_flags.target == "") {
     ns.tprint("No Target Server specified for manage_server.js")
@@ -206,7 +206,7 @@ export async function main(ns) {
       // Get next batch to finish
       let next_batch = batch_tracker.shift()
       if (next_batch === undefined) {
-        ns.tail()
+        ns.ui.openTail()
         ns.tprint("ERROR Next Batch is Undefined!?")
       }
       let batch_pid_to_watch = next_batch[0]
