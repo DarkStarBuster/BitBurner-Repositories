@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/scripts/util/port_management"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 
 const CONTROL_PARAMETERS = {}
 
@@ -28,7 +28,7 @@ function init() {
 }
 
 /**
- * @param {import("../../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {string} target 
  */
 function update_hash_target(ns, target, time) {
@@ -36,7 +36,7 @@ function update_hash_target(ns, target, time) {
   CONTROL_PARAMETERS.hacknet.hash_time   = time
 }
 
-/** @param {import("../../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAM_HANDLER = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)

@@ -1,5 +1,5 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
 
 /**
  * ALL_SERVER_STATS is an object that will hold static or binary information about all servers.
@@ -23,7 +23,7 @@ const ALL_SERVER_STATS = {}
 /**
  * Initialize the Server Info Handler.
  * 
- * @param {import("../../../.").NS} ns - Netscript Environment
+ * @param {import("@ns").NS} ns - Netscript Environment
  */
 function init(ns) {
   ns.disableLog("ALL")
@@ -37,9 +37,9 @@ function init(ns) {
 /**
  * Update a single servers static statistics in ALL_SERVER_STATS
  * 
- * @param {import("../../../.").NS} ns - Netscript Environment
+ * @param {import("@ns").NS} ns - Netscript Environment
  * @param {string} server - Server name we want to update the stats of
- * @param {import("../../../.").NetscriptPort} handler - Optional, handler that will handle the port writing, needs to be provided unless defer_write is true
+ * @param {import("@ns").NetscriptPort} handler - Optional, handler that will handle the port writing, needs to be provided unless defer_write is true
  * @param {boolean} defer_write - Optional, pass true if the calling function will use the handler itself to write to the port
  */
 function update_server_stats(ns, server, handler = undefined, defer_write = false) {
@@ -64,8 +64,8 @@ function update_server_stats(ns, server, handler = undefined, defer_write = fals
 /**
  * Update all servers static statistics in ALL_SERVER_STATS
  * 
- * @param {import("../../../.").NS} ns - Netscript Environment
- * @param {import("../../../.").NetscriptPort} handler - Handler that will handle the port writing
+ * @param {import("@ns").NS} ns - Netscript Environment
+ * @param {import("@ns").NetscriptPort} handler - Handler that will handle the port writing
  */
 function populate_all_server_stats(ns, handler) {
   let all_servers = scan_for_servers(ns,{})
@@ -78,7 +78,7 @@ function populate_all_server_stats(ns, handler) {
   handler.write(JSON.stringify(ALL_SERVER_STATS))
 }
 
-/** @param {import("../../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const SERVER_INFO_HANDLER   = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)
   const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)

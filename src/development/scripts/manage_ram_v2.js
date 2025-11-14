@@ -1,12 +1,12 @@
-import { PORT_IDS } from "/scripts/util/port_management"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 
 const RAM_STATE = {}
 let RAM_STATE_ORDERED = []
 const IGNORE_LIST = ["hacknet"]
 
 /**
- * @param {import("../../.").NetscriptPort} server_info_handler
- * @param {import("../../.").NetscriptPort} control_parameters
+ * @param {import("@ns").NetscriptPort} server_info_handler
+ * @param {import("@ns").NetscriptPort} control_parameters
  */
 function initialise_ram_manager(server_info_handler, control_parameters) {
 
@@ -54,7 +54,7 @@ function initialise_ram_manager(server_info_handler, control_parameters) {
 }
 
 /**
- * @param {NetscriptPort} server_info_handler
+ * @param {import("@ns").NetscriptPort} server_info_handler
  */
 function update_max_ram_state(server_info_handler) {
 
@@ -347,7 +347,7 @@ function release_pids_ram(pid_to_release) {
 }
 
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)

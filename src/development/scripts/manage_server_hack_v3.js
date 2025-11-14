@@ -1,11 +1,12 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { release_ram, request_ram } from "/scripts/util/ram_management"
-import { round_ram_cost } from "/scripts/util/rounding"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
+import { round_ram_cost } from "/src/development/scripts/util/rounding"
 
 /**
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {string} target_server 
- * @param {NetscriptPort} control_params 
+ * @param {import("@ns").NetscriptPort} control_params
+ * @param {import("@ns").Server} mock_server
  * @returns A batch definition.
  */
 function construct_batch(ns, target_server, control_params, mock_server) {
@@ -90,7 +91,7 @@ function construct_batch(ns, target_server, control_params, mock_server) {
   return batch_info
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const SERVER_INFO_HANDLER   = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)

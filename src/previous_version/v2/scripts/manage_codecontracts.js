@@ -1,4 +1,4 @@
-import {scan_for_servers} from "/scripts/util/scan_for_servers"
+import {scan_for_servers} from "/src/previous_version/v2/scripts/util/scan_for_servers"
 
 // Find Largest Prime Factor
 // Subarray with Maximum Sum

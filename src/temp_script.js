@@ -1,5 +1,5 @@
 
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { COLOUR, colourize } from "/src/scripts/util/colours"
 
 /** @param {import("@ns").NS} ns */
 export async function main(ns) {

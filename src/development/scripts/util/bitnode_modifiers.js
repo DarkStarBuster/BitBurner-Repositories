@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/scripts/util/port_management"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 
 // Could be done with only one of larger/smaller but I like completeness.
 
@@ -64,7 +64,7 @@ export const bitnode_mults = {
 }
 
 
-/** @param {import("../../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
 

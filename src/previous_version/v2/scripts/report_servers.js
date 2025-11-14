@@ -1,6 +1,6 @@
-import {colours} from "/scripts/util/colours.js"
-import {bitnode_mults} from "/scripts/util/bitnode_modifiers.js"
-import {scan_for_servers} from "/scripts/util/scan_for_servers.js"
+import {colours} from "/src/previous_version/v2/scripts/util/colours.js"
+import {bitnode_mults} from "/src/previous_version/v2/scripts/util/bitnode_modifiers.js"
+import {scan_for_servers} from "/src/previous_version/v2/scripts/util/scan_for_servers.js"
 
 /**
  * Guess who didn't know that string.padStart and string.padEnd existed?

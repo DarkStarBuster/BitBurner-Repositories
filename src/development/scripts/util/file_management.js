@@ -1,4 +1,4 @@
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { COLOUR, colourize } from "/src/development/scripts/util/constant_utilities"
 
 const LOG_COLOUR = colourize(COLOUR.PURPLE, 9)
 const DEFAULT_COLOUR = colourize(COLOUR.DEFAULT)

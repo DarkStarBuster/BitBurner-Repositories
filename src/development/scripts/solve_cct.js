@@ -1,5 +1,5 @@
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {Object} contract_info
  * @param {any} result
  */

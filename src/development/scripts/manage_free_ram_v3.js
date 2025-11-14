@@ -1,7 +1,13 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 
+
+/**
+ * @param {import("@ns").NS} ns 
+ * @param {string} server
+ * @param {import("@ns").NetscriptPort} ram_request_handler
+ * @param {import("@ns").NetscriptPort} ram_provide_handler 
+ */
 async function is_server_busy(ns, server, ram_request_handler, ram_provide_handler) {
   let request = {
     "action"   : "free_ram_enquire"
@@ -49,6 +55,12 @@ async function is_server_busy(ns, server, ram_request_handler, ram_provide_handl
   }
 }
 
+/**
+ * @param {import("@ns").NS} ns 
+ * @param {string} server
+ * @param {import("@ns").NetscriptPort} ram_request_handler
+ * @param {import("@ns").NetscriptPort} ram_provide_handler 
+ */
 async function is_pid_on_server(ns, server, ram_request_handler, ram_provide_handler) {
   let request = {
     "action"   : "pid_on_server_enquire"
@@ -85,6 +97,13 @@ async function is_pid_on_server(ns, server, ram_request_handler, ram_provide_han
   }
 }
 
+/**
+ * @param {import("@ns").NS} ns 
+ * @param {string} server
+ * @param {number} ram
+ * @param {import("@ns").NetscriptPort} ram_request_handler
+ * @param {import("@ns").NetscriptPort} ram_provide_handler 
+ */
 async function request_ram(ns, server, ram, ram_request_handler, ram_provide_handler) {
   let request = {
     "action"   : "free_ram_request"
@@ -122,6 +141,12 @@ async function request_ram(ns, server, ram, ram_request_handler, ram_provide_han
   }
 }
 
+/**
+ * @param {import("@ns").NS} ns 
+ * @param {string} server
+ * @param {import("@ns").NetscriptPort} ram_request_handler
+ * @param {import("@ns").NetscriptPort} ram_provide_handler 
+ */
 async function release_ram(ns, server, ram_request_handler, ram_provide_handler) {
   let request = {
     "action"   : "free_ram_release"
@@ -161,13 +186,13 @@ async function release_ram(ns, server, ram_request_handler, ram_provide_handler)
 
 /**
  * 
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {*} p_servers 
- * @param {*} server_to_run 
- * @param {*} server_to_check 
- * @param {*} script_to_run 
- * @param {*} ram_request_handler 
- * @param {*} ram_provide_handler 
+ * @param {string} server_to_run 
+ * @param {string} server_to_check 
+ * @param {string} script_to_run 
+ * @param {import("@ns").NetscriptPort} ram_request_handler 
+ * @param {import("@ns").NetscriptPort} ram_provide_handler 
  * @returns 
  */
 async function consume_ram(ns, p_servers, server_to_run, server_to_check, script_to_run, ram_request_handler, ram_provide_handler) {
@@ -225,7 +250,7 @@ async function consume_ram(ns, p_servers, server_to_run, server_to_check, script
   return p_servers
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)

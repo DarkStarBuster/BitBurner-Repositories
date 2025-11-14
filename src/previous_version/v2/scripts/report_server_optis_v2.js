@@ -1,4 +1,4 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
+import { scan_for_servers } from "/src/previous_version/v2/scripts/util/scan_for_servers"
 
 // CONSTS
 const HACK_BATCH_LIMIT = 30

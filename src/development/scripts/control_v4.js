@@ -1,9 +1,8 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
-import { release_ram, request_ram } from "/scripts/util/ram_management"
-import { append_to_file, delete_file, rename_file } from "/scripts/util/file_management"
-import { round_ram_cost } from "/scripts/util/rounding"
+import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
+import { PORT_IDS, COLOUR, colourize } from "/src/development/scripts/util/constant_utilities"
+import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
+import { append_to_file, delete_file, rename_file } from "/src/development/scripts/util/file_management"
+import { round_ram_cost } from "/src/development/scripts/util/rounding"
 
 const LOG_COLOUR = colourize(COLOUR.MINT,9)
 const DEF_COLOUR = colourize(COLOUR.DEFAULT)
@@ -43,7 +42,7 @@ const RAM_INFO = {
  */
 
 /**
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  */
 function init(ns) {
   disable_logs(ns)
@@ -55,7 +54,7 @@ function init(ns) {
 }
 
 /**
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  */
 function disable_logs(ns) {
   ns.disableLog("ALL")
@@ -63,7 +62,7 @@ function disable_logs(ns) {
 }
 
 /**
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  */
 function init_file_log(ns){
   if (ns.fileExists(PRIOR_FILENAME)) {
@@ -75,7 +74,7 @@ function init_file_log(ns){
 }
 
 /**
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {string} message 
  */
 function log(ns, message) {
@@ -83,12 +82,12 @@ function log(ns, message) {
 }
 
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  */
 function kill_all_other_processes(ns) {
   let rooted_servers = scan_for_servers(ns,{"is_rooted":true,"include_home":true})
   let cnt = 0
-  // This function is called soon after control_servers_v2.js is started.
+  // This function is called soon after control_v4.js is started.
   // We should have a clean slate to build from, so kill all possible actions on all servers apart from this process
   for (let server of rooted_servers) {
     let process_ids = ns.ps(server)
@@ -106,9 +105,9 @@ function kill_all_other_processes(ns) {
 }
 
 /**
- * @param {import("../../.").NS} ns Netscript Environment
- * @param {import("../../.").NetscriptPort} control_param_handler 
- * @param {import("../../.").NetscriptPort} bitnode_mults_handler
+ * @param {import("@ns").NS} ns Netscript Environment
+ * @param {import("@ns").NetscriptPort} control_param_handler 
+ * @param {import("@ns").NetscriptPort} bitnode_mults_handler
  */
 async function populate_control_and_bitnode_stats(ns, control_param_handler, bitnode_mults_handler) {
   let pid = ns.exec("/scripts/util/bitnode_modifiers.js","home",{threads:1,temporary:true})
@@ -137,9 +136,9 @@ async function populate_control_and_bitnode_stats(ns, control_param_handler, bit
 /**
  * Start the RAM Managing process
  * 
- * @param {import("../../.").NS} ns - Netscript Environment
+ * @param {import("@ns").NS} ns - Netscript Environment
  * @param {number} control_pid - PID of the Control Parameter 
- * @param {import("../../.").NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
+ * @param {import("@ns").NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
  */
 async function start_ram_manager(ns, control_pid, ram_provide_handler) {
   let ram_pid = ns.exec("/scripts/manage_ram_v2.js", "home", {threads:1,temporary:true})
@@ -182,9 +181,9 @@ async function start_ram_manager(ns, control_pid, ram_provide_handler) {
       )
     )
     RAM_INFO[ram_response.server] = {
-      assigned_ram: ram_response.amount
-     ,free_ram: calc_free_ram
-     ,processes: {}
+      assigned_ram: ram_response.amount,
+      free_ram: calc_free_ram,
+      processes: {}
     }
     RAM_INFO[ram_response.server].processes[ram_pid] = {
       ram_cost: ns.getScriptRam("/scripts/manage_ram_v2.js"),
@@ -207,7 +206,7 @@ async function start_ram_manager(ns, control_pid, ram_provide_handler) {
 }
 
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} pid 
  * @param {string} filename 
  * @param {string} server
@@ -223,7 +222,7 @@ function add_child_process(ns, pid, filename, server) {
 }
 
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename 
  * @returns {boolean}
  */
@@ -255,7 +254,7 @@ function child_is_running(ns, filename) {
   return runing
 }
 /**
- * @param {import("../../.").NS} ns - NetScript Environment
+ * @param {import("@ns").NS} ns - NetScript Environment
  * @param {string} filename - Script to Launch
  */
 async function launch_child(ns, filename) {
@@ -288,7 +287,7 @@ async function launch_child(ns, filename) {
 }
 
 /**
- *  @param {import("../../.").NS} ns
+ *  @param {import("@ns").NS} ns
  */
 async function start_managers(ns) {
   log(ns, "Calculate amount of RAM we need for our managers.")

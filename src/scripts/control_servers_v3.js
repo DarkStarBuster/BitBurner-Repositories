@@ -61,7 +61,9 @@ let all_server_stats = {}
  * }
  */
 
-/** @param {import("@ns").NS} ns */
+/**
+ * @param {import("@ns").NS} ns
+ */
 function init(ns) {
   disable_logs(ns)
   init_log(ns)
@@ -72,7 +74,9 @@ function init(ns) {
   all_server_stats = {}
 }
 
-/** @param {import("@ns").NS} ns */
+/**
+ * @param {import("@ns").NS} ns
+ */
 function disable_logs(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
@@ -167,8 +171,8 @@ function populate_all_server_stats(ns, handler) {
 
 /**
  * @param {import("@ns").NS} ns Netscript Environment
- * @param {NetscriptPort} control_param_handler 
- * @param {NetscriptPort} bitnode_mults_handler
+ * @param {import("@ns").NetscriptPort} control_param_handler 
+ * @param {import("@ns").NetscriptPort} bitnode_mults_handler
  */
 async function populate_control_and_bitnode_stats(ns, control_param_handler, bitnode_mults_handler) {
   let pid = ns.exec("/scripts/util/control_parameters.js","home",1)
@@ -198,8 +202,8 @@ async function populate_control_and_bitnode_stats(ns, control_param_handler, bit
  * Start the RAM Managing process
  * 
  * @param {import("@ns").NS} ns - Netscript Environment
- * @param {NetscriptPort} ram_request_handler - Port that handles RAM requests
- * @param {NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
+ * @param {import("@ns").NetscriptPort} ram_request_handler - Port that handles RAM requests
+ * @param {import("@ns").NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
  */
 async function start_ram_manager(ns, ram_request_handler, ram_provide_handler) {
   let ram_pid = ns.exec("/scripts/manage_ram.js", "home", 1)
@@ -271,7 +275,7 @@ function add_child_process(ns, pid, filename, server) {
 }
 
 /**
- * @param {import(import("@ns").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename 
  * @returns {boolean}
  */
@@ -305,8 +309,8 @@ function child_is_running(ns, filename) {
  * 
  * @param {import("@ns").NS} ns - NetScript Environment
  * @param {string} filename - Script to Launch
- * @param {NetscriptPort} ram_request_handler - Handler to request RAM
- * @param {NetscriptPort} ram_provide_handler - Handler to listen for provided RAM
+ * @param {import("@ns").NetscriptPort} ram_request_handler - Handler to request RAM
+ * @param {import("@ns").NetscriptPort} ram_provide_handler - Handler to listen for provided RAM
  */
 async function launch_child(ns, filename, ram_request_handler, ram_provide_handler) {
   let ram_needed = ns.getScriptRam(filename)

@@ -1,13 +1,12 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
+import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 
 let prior_tail_width = 0
 let prior_tail_height = 0
 
 /**
  * @param {import("@ns").NS} ns
- * @param {NodeStats[]} stats_array 
+ * @param {import("@ns").NodeStats[]} stats_array 
  * @returns 
  */
 function format_stats(ns, stats_array) {

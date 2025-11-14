@@ -1,9 +1,8 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
-import { round_ram_cost } from "/scripts/util/rounding"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { round_ram_cost } from "/src/development/scripts/util/rounding"
 
 /**
- * @param {import("../../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} ram_amount
  */
 export async function request_ram(ns, ram_amount, include_hacknet = false) {
@@ -74,7 +73,7 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
 }
   
 /**
- * @param {import("../../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} server_to_release_from 
  * @param {number} ram_amount
  */

@@ -1,7 +1,5 @@
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { PORT_IDS } from "/scripts/util/port_management"
-import { COLOUR, colourize } from "/scripts/util/colours"
-import { release_ram, request_ram } from "/scripts/util/ram_management"
+import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
+import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
 
 // Find Largest Prime Factor
 // Subarray with Maximum Sum
@@ -33,7 +31,7 @@ import { release_ram, request_ram } from "/scripts/util/ram_management"
 
 /**
  * 
- * @param {import("../../.").NS} ns 
+ * @param {import("@ns").NS} ns 
  * @param {string} file 
  * @param {string} server 
  * @returns Boolean representing if our Code Contract Solver can handle a certain Contract Type

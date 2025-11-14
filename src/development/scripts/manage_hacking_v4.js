@@ -1,7 +1,7 @@
-import { PORT_IDS } from "/scripts/util/port_management"
-import { scan_for_servers } from "/scripts/util/scan_for_servers"
-import { release_ram, request_ram } from "/scripts/util/ram_management"
-import { round_ram_cost } from "/scripts/util/rounding"
+import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
+import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
+import { round_ram_cost } from "/src/development/scripts/util/rounding"
 
 
 const RAM_INFO = {
@@ -22,16 +22,18 @@ const RAM_INFO = {
   // ...
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 function disable_logging(ns){
   ns.disableLog("ALL")
   ns.enableLog("exec")
 }
 
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {number} pid 
- * @param {string} filename 
+ * @param {string} filename
+ * @param {string} server
+ * @param {string} target
  */
 function add_child_process(ns, pid, filename, server, target) {
   let calc_free_ram = round_ram_cost(RAM_INFO[server].free_ram - ns.getScriptRam(filename))
@@ -44,7 +46,7 @@ function add_child_process(ns, pid, filename, server, target) {
 }
 
 /**
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {string} filename 
  * @returns {boolean}
  */
@@ -74,7 +76,7 @@ function child_is_running(ns, filename) {
 }
 
 /**
- * @param {import("../../.").NS} ns - NetScript Environment
+ * @param {import("@ns").NS} ns - NetScript Environment
  * @param {string} filename - Script to Launch
  * @param {string} server_to_target - Server to target with the script given
  */
@@ -127,7 +129,7 @@ async function launch_child(ns, filename, server_to_target) {
 
 /**
  * Kills a child process that targets the given target
- * @param {import("../../.").NS} ns NetScript Environment
+ * @param {import("@ns").NS} ns NetScript Environment
  * @param {string} childs_target Target of the process we want to kill
  */
 async function kill_child(ns, childs_target) {
@@ -155,7 +157,7 @@ async function kill_child(ns, childs_target) {
 }
 
 /** 
- * @param {import("../../.").NS} ns
+ * @param {import("@ns").NS} ns
  * @param {boolean} force_update
  */
 async function check_root(ns, force_update) {
@@ -242,7 +244,9 @@ async function check_root(ns, force_update) {
   return Promise.resolve()
 }
 
-/** @param {import("../../.").NS} ns */
+/**
+ * @param {import("@ns").NS} ns
+ */
 async function check_manage(ns, control_params, bitnode_mults, server_info) {
 
   let managed_servers = []
@@ -396,7 +400,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
   return Promise.resolve()
 }
 
-/** @param {import("../../.").NS} ns */
+/** @param {import("@ns").NS} ns */
 export async function main(ns) {
   const CONTROL_PARAM_HANDLER = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
   const BITNODE_MULTS_HANDLER = ns.getPortHandle(PORT_IDS.BITNODE_MULTS_HANDLER)
