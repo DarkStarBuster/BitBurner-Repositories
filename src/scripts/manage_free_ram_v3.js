@@ -309,7 +309,7 @@ export async function main(ns) {
       switch (server) {
         case "pserv-0":
           server_to_check = "home"
-          filename = "/scripts/util/weaken_for_exp.js"
+          filename = "/scripts/util/dynamic/weaken_for_exp.js"
           break
         case "pserv-24":
           server_to_check = "pserv-23"
@@ -322,7 +322,7 @@ export async function main(ns) {
           else {
             server_to_check = "home"
           }
-          filename = "/scripts/util/weaken_for_exp.js"
+          filename = "/scripts/util/dynamic/weaken_for_exp.js"
           break
       }
 
