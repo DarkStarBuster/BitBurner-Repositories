@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 import { kill_all_other_processes } from "/src/scripts/util/static/kill_all_other_processes"
 
 

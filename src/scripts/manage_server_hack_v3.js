@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 

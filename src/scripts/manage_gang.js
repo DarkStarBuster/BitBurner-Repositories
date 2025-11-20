@@ -1,4 +1,5 @@
-import { PORT_IDS, COLOUR, colourize} from "/src/scripts/util/constant_utilities"
+import { COLOUR, colourize} from "/src/scripts/util/constant_utilities"
+import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 
 const MAX_NUM_MEMBERS = 12
 const NAMES = {

@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 import { scan_for_servers } from "./static/scan_for_servers"
 
 /**

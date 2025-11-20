@@ -1,5 +1,6 @@
-import { PORT_IDS, COLOUR, colourize } from "/src/scripts/util/constant_utilities"
+import { COLOUR, colourize } from "/src/scripts/util/constant_utilities"
 import { round_ram_cost } from "/src/scripts/util/rounding"
+import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 
 const RAM_STATE = {}
 let RAM_STATE_ORDERED = []

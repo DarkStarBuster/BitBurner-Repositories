@@ -1,7 +1,8 @@
 import { append_to_file, delete_file, rename_file } from "/src/scripts/util/static/file_management"
 import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
+import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 
-import { PORT_IDS, COLOUR, colourize } from "/src/scripts/util/constant_utilities"
+import { COLOUR, colourize } from "/src/scripts/util/constant_utilities"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
