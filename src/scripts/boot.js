@@ -1,4 +1,4 @@
-import { PORT_NAMES } from "/src/scripts/manage_ports"
+import { PORT_NAMES } from "/src/scripts/util/dynamic/manage_ports"
 import { kill_all_other_processes } from "/src/scripts/util/static/kill_all_other_processes"
 
 /** @param {import("@ns").NS} ns */
@@ -15,7 +15,7 @@ async function setup_port_ids(ns) {
     ports.push(pid)
   }
 
-  ns.run("scripts/manage_ports.js", {threads:1,temporary:true}, ...ports)
+  ns.run("scripts/util/dynamic/manage_ports.js", {threads:1,temporary:true}, ...ports)
   ns.tprint(`INFO: Setup ${ports.length / 2} ports.`)
 }
 
