@@ -4,7 +4,6 @@ import { kill_all_other_processes } from "/src/scripts/util/static/kill_all_othe
 
 /** @param {import("@ns").NS} ns */
 export async function main(ns) {
-  const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
 
   const arg_flags = ns.flags([
     ["all"  ,false]
@@ -14,11 +13,13 @@ export async function main(ns) {
 
   if (arg_flags.all) {
     kill_all_other_processes(ns)
-    let filename = "/scripts/boot.js"
+    let filename = "/scripts/boot/boot.js"
     ns.run(filename)
   }
 
+
   if (arg_flags.gang) {
+    const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
     while(
       !UPDATE_HANDLER.tryWrite(
         JSON.stringify({
@@ -34,6 +35,7 @@ export async function main(ns) {
   }
 
   if (arg_flags.freeram) {
+    const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
     while(
       !UPDATE_HANDLER.tryWrite(
         JSON.stringify({
