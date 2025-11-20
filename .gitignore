@@ -150,3 +150,6 @@ dist
 
 # Code Workspace file
 BitBurner Repositories.code-workspace
+
+# A small scrappad script we don't want to version control
+src/small_runner.js
