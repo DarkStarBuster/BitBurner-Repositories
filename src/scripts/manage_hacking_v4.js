@@ -1,7 +1,8 @@
-import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { append_to_file, delete_file, rename_file } from "/src/scripts/util/static/file_management"
 import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
+
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
-import { append_to_file, delete_file, rename_file } from "/src/scripts/util/file_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
 const LOG_FILENAME = "logs/manage_hacking_curr.txt"
@@ -258,15 +259,15 @@ async function check_root(ns, force_update) {
     // Transfer files to rooted severs
     if (all_servers[server].is_rooted) {
 
-      if (!ns.fileExists("/scripts/util/dynamic/weaken_v3.js" , server) || force_update) ns.scp("/scripts/util/dynamic/weaken_v3.js" , server)
-      if (!ns.fileExists("/scripts/util/dynamic/grow_v3.js"   , server) || force_update) ns.scp("/scripts/util/dynamic/grow_v3.js"   , server)
-      if (!ns.fileExists("/scripts/util/dynamic/hack_v3.js"   , server) || force_update) ns.scp("/scripts/util/dynamic/hack_v3.js"   , server)
+      if (!ns.fileExists("/scripts/util/dynamic/weaken_v3.js"     , server) || force_update) ns.scp("/scripts/util/dynamic/weaken_v3.js"     , server)
+      if (!ns.fileExists("/scripts/util/dynamic/grow_v3.js"       , server) || force_update) ns.scp("/scripts/util/dynamic/grow_v3.js"       , server)
+      if (!ns.fileExists("/scripts/util/dynamic/hack_v3.js"       , server) || force_update) ns.scp("/scripts/util/dynamic/hack_v3.js"       , server)
+      if (!ns.fileExists("/scripts/util/static/file_management.js", server) || force_update) ns.scp("/scripts/util/static/file_management.js", server)
 
       if (!ns.fileExists("/scripts/util/constant_utilities.js", server) || force_update) ns.scp("/scripts/util/constant_utilities.js", server)
       if (!ns.fileExists("/scripts/util/rounding.js"          , server) || force_update) ns.scp("/scripts/util/rounding.js"          , server)
       if (!ns.fileExists("/scripts/util/port_management.js"   , server) || force_update) ns.scp("/scripts/util/port_management.js"   , server)
       if (!ns.fileExists("/scripts/util/ram_management.js"    , server) || force_update) ns.scp("/scripts/util/ram_management.js"    , server)
-      if (!ns.fileExists("/scripts/util/file_management.js"   , server) || force_update) ns.scp("/scripts/util/file_management.js"    , server)
       if (!ns.fileExists("/scripts/util/share.js"             , server) || force_update) ns.scp("/scripts/util/share.js"             , server)
       if (!ns.fileExists("/scripts/util/weaken_for_exp.js"    , server) || force_update) ns.scp("/scripts/util/weaken_for_exp.js"    , server)
       if (!ns.fileExists("/scripts/manage_server_hack_v3.js"  , server) || force_update) ns.scp("/scripts/manage_server_hack_v3.js"  , server)
