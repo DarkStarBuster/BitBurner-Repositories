@@ -1,5 +1,5 @@
 import { PORT_IDS } from "/src/scripts/util/constant_utilities"
-import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { scan_for_servers } from "./static/scan_for_servers"
 
 /**
  * ALL_SERVER_STATS is an object that will hold static or binary information about all servers.

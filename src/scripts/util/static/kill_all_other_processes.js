@@ -1,4 +1,4 @@
-import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { scan_for_servers } from "./scan_for_servers"
 
 /**
  * @param {import("@ns").NS} ns

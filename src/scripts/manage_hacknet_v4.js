@@ -1,4 +1,4 @@
-import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
 import { PORT_IDS } from "/src/scripts/util/constant_utilities"
 
 class ProcessInfo {

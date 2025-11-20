@@ -1,5 +1,5 @@
 import { PORT_IDS } from "/src/scripts/util/constant_utilities"
-import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { append_to_file, delete_file, rename_file } from "/src/scripts/util/file_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"

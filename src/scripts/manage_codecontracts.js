@@ -1,4 +1,4 @@
-import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 
 // Find Largest Prime Factor
