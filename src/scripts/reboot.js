@@ -36,7 +36,7 @@ export async function main(ns) {
 
   if (arg_flags.all) {
     kill_all_other_processes(ns)
-    let filename = (IN_DEV ? "/development" : "") + "/scripts/control_v4.js"
+    let filename = "/scripts/control_v4.js"
     ns.exec(filename, "home")
   }
 

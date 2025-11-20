@@ -308,11 +308,11 @@ export async function main(ns) {
       switch (server) {
         case "pserv-0":
           server_to_check = "home"
-          filename = (IN_DEV ? "/development" : "") + "/scripts/util/weaken_for_exp.js"
+          filename = "/scripts/util/weaken_for_exp.js"
           break
         case "pserv-24":
           server_to_check = "pserv-23"
-          filename = (IN_DEV ? "/development" : "") + "/scripts/util/share.js"
+          filename = "/scripts/util/share.js"
           break
         default:
           if (server.includes("pserv")) {
@@ -321,7 +321,7 @@ export async function main(ns) {
           else {
             server_to_check = "home"
           }
-          filename = (IN_DEV ? "/development" : "") + "/scripts/util/weaken_for_exp.js"
+          filename = "/scripts/util/weaken_for_exp.js"
           break
       }
 

@@ -398,11 +398,11 @@ export async function main(ns) {
         //ns.print("Execution time of loop: " + (pre_exec - post_exec) + " / " + await_time + " / " + control_params.hacker.hack_batch_time_interval)
         let hack_pid = 0
         if (batch_info.do_hacks) {
-          hack_pid          = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/hack_v3.js"  , server_to_use, {threads: batch_info.batch_hack.threads       ,temporary: true}, arg_flags.target, batch_info.batch_hack.addMsec)
+          hack_pid          = ns.exec("/scripts/util/hack_v3.js"  , server_to_use, {threads: batch_info.batch_hack.threads       ,temporary: true}, arg_flags.target, batch_info.batch_hack.addMsec)
         }
-        let weaken_hack_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_hack.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_hack.addMsec)
-        let grow_pid        = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/grow_v3.js"  , server_to_use, {threads: batch_info.batch_grow.threads       ,temporary: true}, arg_flags.target, batch_info.batch_grow.addMsec)
-        let weaken_grow_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_grow.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_grow.addMsec)
+        let weaken_hack_pid = ns.exec("/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_hack.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_hack.addMsec)
+        let grow_pid        = ns.exec("/scripts/util/grow_v3.js"  , server_to_use, {threads: batch_info.batch_grow.threads       ,temporary: true}, arg_flags.target, batch_info.batch_grow.addMsec)
+        let weaken_grow_pid = ns.exec("/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_grow.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_grow.addMsec)
         post_exec = performance.now()
 
         if ((

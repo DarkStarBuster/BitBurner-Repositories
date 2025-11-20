@@ -181,7 +181,7 @@ function kill_all_other_processes(ns) {
  * @param {import("@ns").NetscriptPort} server_info_handler
  */
 async function populate_information_ports(ns, control_info, control_param_handler, bitnode_mults_handler, server_info_handler) {
-  let pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/bitnode_modifiers.js","home",{threads:1,temporary:true})
+  let pid = ns.exec("/scripts/util/bitnode_modifiers.js","home",{threads:1,temporary:true})
   if (pid === 0) {
     ns.tprint("ERROR Failed to launch BitNode Multipliers script.")
     ns.exit()
@@ -192,7 +192,7 @@ async function populate_information_ports(ns, control_info, control_param_handle
   }
   control_info.bitnode_modifiers_run = true
 
-  let server_info_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js", "home", {threads:1,temporary:true})
+  let server_info_pid = ns.exec("/scripts/util/handle_server_info.js", "home", {threads:1,temporary:true})
   if (server_info_pid === 0) {
     ns.tprint("ERROR Failed to launch Server Info script.")
     ns.exit()
@@ -203,7 +203,7 @@ async function populate_information_ports(ns, control_info, control_param_handle
   }
   control_info.server_info_handler_pid = server_info_pid
 
-  let control_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js","home",{threads:1,temporary:true})
+  let control_pid = ns.exec("/scripts/util/control_parameters.js","home",{threads:1,temporary:true})
   if (control_pid === 0) {
     ns.tprint("ERROR Failed to launch Control Parameters script.")
     ns.exit()
@@ -226,7 +226,7 @@ async function populate_information_ports(ns, control_info, control_param_handle
  * @param {import("@ns").NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
  */
 async function start_ram_manager(ns, control_info, ram_provide_handler) {
-  let ram_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js", "home", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  let ram_pid = ns.exec("/scripts/manage_ram_v2.js", "home", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
 
   if(ram_pid === 0) {
     log(ns, "ERROR Failed to launch RAM Manager script.")
@@ -264,10 +264,10 @@ async function start_ram_manager(ns, control_info, ram_provide_handler) {
 
   let ram_response = await request_ram(
     ns
-   ,  ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js")
-    + ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/control_v4.js")
-    + ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js")
-    + ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js")
+   ,  ns.getScriptRam("/scripts/manage_ram_v2.js")
+    + ns.getScriptRam("/scripts/control_v4.js")
+    + ns.getScriptRam("/scripts/util/control_parameters.js")
+    + ns.getScriptRam("/scripts/util/handle_server_info.js")
   )
 
   if (!(ram_response.result === "OK")) {
@@ -283,20 +283,20 @@ async function start_ram_manager(ns, control_info, ram_provide_handler) {
       processes: {}
     }
     RAM_INFO[ram_response.server].processes[ram_pid] = {
-      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js"),
-      filename: (IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js"
+      ram_cost: ns.getScriptRam("/scripts/manage_ram_v2.js"),
+      filename: "/scripts/manage_ram_v2.js"
     }
     RAM_INFO[ram_response.server].processes[ns.pid] = {
-      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/control_v4.js"),
-      filename: (IN_DEV ? "/development" : "") + "/scripts/control_v4.js"
+      ram_cost: ns.getScriptRam("/scripts/control_v4.js"),
+      filename: "/scripts/control_v4.js"
     }
     RAM_INFO[ram_response.server].processes[control_info.control_parameters_pid] = {
-      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js")
-     ,filename: (IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js"
+      ram_cost: ns.getScriptRam("/scripts/util/control_parameters.js")
+     ,filename: "/scripts/util/control_parameters.js"
     }
     RAM_INFO[ram_response.server].processes[control_info.server_info_handler_pid] = {
-      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js")
-     ,filename: (IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js" 
+      ram_cost: ns.getScriptRam("/scripts/util/handle_server_info.js")
+     ,filename: "/scripts/util/handle_server_info.js" 
     }
   }
 
@@ -403,20 +403,20 @@ async function launch_child(ns, filename, server) {
 async function start_managers(ns, control_info) {
   log(ns, "Calculate amount of RAM we need for our managers.")
   let ram_needed = 0
-  ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js")
+  ram_needed += ns.getScriptRam("/scripts/manage_hacking_v4.js")
   log(ns, "Add Hack/Prep Manager Manager script RAM. Total: " + ram_needed)
   if (ns.getServerMaxRam("home") >= 64) {
-    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js")
+    ram_needed += ns.getScriptRam("/scripts/manage_hacknet_v4.js")
     log(ns, "Add Hacknet Manager script RAM. Total: " + ram_needed)
-    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v4.js")
+    ram_needed += ns.getScriptRam("/scripts/manage_pservers_v4.js")
     log(ns, "Add Hack/Prep Manager Manager script RAM. Total: " + ram_needed)
   }
   if (ns.getServerMaxRam("home") >= 128) {
-    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js")
+    ram_needed += ns.getScriptRam("/scripts/manage_codecontracts.js")
     log(ns, "Add Code Contract Manager script RAM. Total: " + ram_needed)
-    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_free_ram_v3.js")
+    ram_needed += ns.getScriptRam("/scripts/manage_free_ram_v3.js")
     log(ns, "Add Free RAM Manager script RAM. Total: " + ram_needed)
-    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_gang.js")
+    ram_needed += ns.getScriptRam("/scripts/manage_gang.js")
     log(ns, "Add Gang Manager script RAM. Total: " + ram_needed)
   }
 
@@ -447,57 +447,57 @@ async function start_managers(ns, control_info) {
     log(ns,"Server \"" + ram_response.server + "\" has had " + ram_response.amount + " RAM assigned to us.")
   }
 
-  let pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js",ram_response.server,{threads:1,temporary:true})
+  let pid = ns.exec("/scripts/manage_hacking_v4.js",ram_response.server,{threads:1,temporary:true})
   if (pid === 0) {
     log(ns, "ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
     ns.tprint("ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
   }
   else {
-    add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js",ram_response.server)
+    add_child_process(ns,pid,"/scripts/manage_hacking_v4.js",ram_response.server)
     control_info.hacking_manager_pid = pid
   }
 
   if (ns.getServerMaxRam("home") >= 64) {
-    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js",ram_response.server,{threads:1,temporary:true})
+    pid = ns.exec("/scripts/manage_hacknet_v4.js",ram_response.server,{threads:1,temporary:true})
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
     }
     else {
-      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js",ram_response.server)
+      add_child_process(ns,pid,"/scripts/manage_hacknet_v4.js",ram_response.server)
       control_info.hacknet_manager_pid = pid
     }
   
-    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v3.js",ram_response.server,{threads:1,temporary:true})
+    pid = ns.exec("/scripts/manage_pservers_v3.js",ram_response.server,{threads:1,temporary:true})
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
     }
     else {
-      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v3.js",ram_response.server)
+      add_child_process(ns,pid,"/scripts/manage_pservers_v3.js",ram_response.server)
       control_info.pserver_manager_pid = pid
     }
     // Either of these two processes can enqueue the Free Ram Manager
   }
 
   if (ns.getServerMaxRam("home") >= 128) {
-    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js",ram_response.server,{threads:1,temporary:true})
+    pid = ns.exec("/scripts/manage_codecontracts.js",ram_response.server,{threads:1,temporary:true})
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Code Contract Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Code Contract Manager after being allocated RAM.")
     }
     else {
-      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js",ram_response.server)
+      add_child_process(ns,pid,"/scripts/manage_codecontracts.js",ram_response.server)
       control_info.code_contract_manager_pid = pid
     }
 
-    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_gang.js",ram_response.server,{threads:1,temporary:true})
+    pid = ns.exec("/scripts/manage_gang.js",ram_response.server,{threads:1,temporary:true})
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Gang Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Gang Manager after being allocated RAM.")
     }
     else {
-      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_gang.js",ram_response.server)
+      add_child_process(ns,pid,"/scripts/manage_gang.js",ram_response.server)
       control_info.gang_manager_pid = pid
     }
   }
@@ -615,7 +615,7 @@ export async function main(ns) {
       switch (update.request_action.script_action) {
         case "params":
           // Launch Control Parameters script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js"
+          filename = "/scripts/util/control_parameters.js"
           run_resp = child_is_running(ns, filename)
           if (run_resp.running) {
             ns.kill(run_resp.pid)
@@ -627,7 +627,7 @@ export async function main(ns) {
           break
         case "BNMult":
           // Launch Populate Bitnode Multipliers script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/util/bitnode_modifiers.js"
+          filename = "/scripts/util/bitnode_modifiers.js"
           if (!child_is_running(ns, filename)) {
             pid = await launch_child(ns, filename)
             control_info.bitnode_modifiers_run = true
@@ -635,14 +635,14 @@ export async function main(ns) {
           break
         case "reboot":
           // Launch RAM Manager script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/reboot.js"
+          filename = "/scripts/reboot.js"
           if (!child_is_running(ns, filename)) {
             ns.exec(filename)
           }
           break
         case "manager":
           // Launch Hack/Prep Manager Manager script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js"
+          filename = "/scripts/manage_hacking_v4.js"
           if (!child_is_running(ns, filename)) {
             pid = await launch_child(ns, filename)
             control_info.hacking_manager_pid = pid
@@ -650,7 +650,7 @@ export async function main(ns) {
           break
         case "hacknet":
           // Launch Automatic Hacknet Upgrade Manager script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js"
+          filename = "/scripts/manage_hacknet_v4.js"
           if (!child_is_running(ns, filename)) {
             pid = await launch_child(ns, filename)
             control_info.hacknet_manager_pid = pid
@@ -658,7 +658,7 @@ export async function main(ns) {
           break
         case "pserver":
           // Launch Automatic Personal Server Manager script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v3.js"
+          filename = "/scripts/manage_pservers_v3.js"
           if (!child_is_running(ns, filename)) {
             pid = await launch_child(ns, filename)
             control_info.pserver_manager_pid = pid
@@ -666,7 +666,7 @@ export async function main(ns) {
           break
         case "freeram":
           // Launch Free RAM Consumer script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_free_ram_v3.js"
+          filename = "/scripts/manage_free_ram_v3.js"
           if (!child_is_running(ns, filename)) {
             pid = await launch_child(ns, filename)
             control_info.free_ram_manager_pid = pid
@@ -674,7 +674,7 @@ export async function main(ns) {
           break
         case "reboot_freeram":
           // Kill and then Relaunch Free RAM Consumer script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_free_ram_v3.js"
+          filename = "/scripts/manage_free_ram_v3.js"
           run_resp = child_is_running(ns, filename)
           if (run_resp.running) {
             ns.tprint(run_resp.pid)
@@ -687,7 +687,7 @@ export async function main(ns) {
           break
         case "cctmang":
           // Launch Code Contract Manager script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js"
+          filename = "/scripts/manage_codecontracts.js"
           if (!child_is_running(ns, filename)) {
             pid = await launch_child(ns, filename)
             control_info.code_contract_manager_pid = pid
@@ -695,7 +695,7 @@ export async function main(ns) {
           break
         case "reboot_gang":
           // Kill and then Relaunch Gang Manger script
-          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_gang.js"
+          filename = "/scripts/manage_gang.js"
           run_resp = child_is_running(ns, filename)
           if (run_resp.running) {
             ns.tprint(run_resp.pid)

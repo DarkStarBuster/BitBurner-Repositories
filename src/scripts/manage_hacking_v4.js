@@ -258,19 +258,19 @@ async function check_root(ns, force_update) {
     // Transfer files to rooted severs
     if (all_servers[server].is_rooted) {
 
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/constant_utilities.js", server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/constant_utilities.js", server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/rounding.js"          , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/rounding.js"          , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/port_management.js"   , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/port_management.js"   , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/ram_management.js"    , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/ram_management.js"    , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/file_management.js"   , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/file_management.js"    , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js"         , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js"         , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/grow_v3.js"           , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/grow_v3.js"           , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/hack_v3.js"           , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/hack_v3.js"           , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/share.js"             , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/share.js"             , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/util/weaken_for_exp.js"    , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/util/weaken_for_exp.js"    , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/manage_server_hack_v3.js"  , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/manage_server_hack_v3.js"  , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/manage_server_prep_v3.js"  , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/manage_server_prep_v3.js"  , server)
-      if (!ns.fileExists((IN_DEV ? "/development" : "") + "/scripts/solve_cct.js"              , server) || force_update) ns.scp((IN_DEV ? "/development" : "") + "/scripts/solve_cct.js"              , server)
+      if (!ns.fileExists("/scripts/util/constant_utilities.js", server) || force_update) ns.scp("/scripts/util/constant_utilities.js", server)
+      if (!ns.fileExists("/scripts/util/rounding.js"          , server) || force_update) ns.scp("/scripts/util/rounding.js"          , server)
+      if (!ns.fileExists("/scripts/util/port_management.js"   , server) || force_update) ns.scp("/scripts/util/port_management.js"   , server)
+      if (!ns.fileExists("/scripts/util/ram_management.js"    , server) || force_update) ns.scp("/scripts/util/ram_management.js"    , server)
+      if (!ns.fileExists("/scripts/util/file_management.js"   , server) || force_update) ns.scp("/scripts/util/file_management.js"    , server)
+      if (!ns.fileExists("/scripts/util/weaken_v3.js"         , server) || force_update) ns.scp("/scripts/util/weaken_v3.js"         , server)
+      if (!ns.fileExists("/scripts/util/grow_v3.js"           , server) || force_update) ns.scp("/scripts/util/grow_v3.js"           , server)
+      if (!ns.fileExists("/scripts/util/hack_v3.js"           , server) || force_update) ns.scp("/scripts/util/hack_v3.js"           , server)
+      if (!ns.fileExists("/scripts/util/share.js"             , server) || force_update) ns.scp("/scripts/util/share.js"             , server)
+      if (!ns.fileExists("/scripts/util/weaken_for_exp.js"    , server) || force_update) ns.scp("/scripts/util/weaken_for_exp.js"    , server)
+      if (!ns.fileExists("/scripts/manage_server_hack_v3.js"  , server) || force_update) ns.scp("/scripts/manage_server_hack_v3.js"  , server)
+      if (!ns.fileExists("/scripts/manage_server_prep_v3.js"  , server) || force_update) ns.scp("/scripts/manage_server_prep_v3.js"  , server)
+      if (!ns.fileExists("/scripts/solve_cct.js"              , server) || force_update) ns.scp("/scripts/solve_cct.js"              , server)
 
     }
   }
@@ -290,10 +290,10 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
       if (ns.isRunning(parseInt(pid))) {
         log(ns, "Live PID: " + pid)
         switch (RAM_INFO[server].processes[pid].filename) {
-          case (IN_DEV ? "/development" : "") + "/scripts/manage_server_hack_v3.js":
+          case "/scripts/manage_server_hack_v3.js":
             managed_servers.push(RAM_INFO[server].processes[pid].target)
             break
-          case (IN_DEV ? "/development" : "") + "/scripts/manage_server_prep_v3.js":
+          case "/scripts/manage_server_prep_v3.js":
             preping_servers.push(RAM_INFO[server].processes[pid].target)
             break
         }
@@ -403,7 +403,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     let successful = false
     if (managed_servers.indexOf(server) == -1) {
       log(ns, "Launching manager for " + server + ".")
-      successful = await launch_child(ns, (IN_DEV ? "/development" : "") + "/scripts/manage_server_hack_v3.js", server)
+      successful = await launch_child(ns, "/scripts/manage_server_hack_v3.js", server)
       if (!successful) {
         log(ns, "Failed to launch manager for " + server + ".")
       }
@@ -438,7 +438,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     ) {
       log(ns, "Launching prepper for " + server + ".")
       ns.print("Server " + server + " maxMoney: " + ns.getServerMaxMoney(server) + ", availableMoney: " + ns.getServerMoneyAvailable(server))
-      successful = await launch_child(ns, (IN_DEV ? "/development" : "") + "/scripts/manage_server_prep_v3.js", server)
+      successful = await launch_child(ns, "/scripts/manage_server_prep_v3.js", server)
       if (!successful) {
         log(ns, "ERROR Failed to launch prepper for " + server + ".")
       }

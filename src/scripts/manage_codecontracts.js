@@ -115,7 +115,7 @@ export async function main(ns) {
               // + "Contract Type   : " + ns.codingcontract.getContractType(file,server) + "\n" 
               // + "Contract Data   : " + ns.codingcontract.getData(file,server) + "\n" 
               // )
-              let solver_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/solve_cct.js", server_to_use, 1, ...["--contract_info",JSON.stringify(contract_info)])
+              let solver_pid = ns.exec("/scripts/solve_cct.js", server_to_use, 1, ...["--contract_info",JSON.stringify(contract_info)])
 
               if (!(solver_pid === 0)) {
                 while(ns.isRunning(solver_pid)) {
