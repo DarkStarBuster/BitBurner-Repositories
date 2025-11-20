@@ -1,13 +1,13 @@
-import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
-import { IN_DEV, PORT_IDS, COLOUR, colourize } from "/src/development/scripts/util/constant_utilities"
-import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
-import { append_to_file, delete_file, rename_file } from "/src/development/scripts/util/file_management"
-import { round_ram_cost } from "/src/development/scripts/util/rounding"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { PORT_IDS, COLOUR, colourize } from "/src/scripts/util/constant_utilities"
+import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { append_to_file, delete_file, rename_file } from "/src/scripts/util/file_management"
+import { round_ram_cost } from "/src/scripts/util/rounding"
 
 const LOG_COLOUR = colourize(COLOUR.MINT,9)
 const DEF_COLOUR = colourize(COLOUR.DEFAULT)
-const LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/control_servers_curr.txt"
-const PRIOR_LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/control_servers_prior.txt"
+const LOG_FILENAME = "logs/control_servers_curr.txt"
+const PRIOR_LOG_FILENAME = "logs/control_servers_prior.txt"
 const X_SIZE = 425
 const Y_SIZE = 274
 

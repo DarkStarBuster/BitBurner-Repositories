@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
 
 /** @param {import("@ns").NS} ns */
 export async function main(ns) {

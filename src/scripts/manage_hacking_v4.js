@@ -1,11 +1,11 @@
-import { IN_DEV, PORT_IDS } from "/src/development/scripts/util/constant_utilities"
-import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
-import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
-import { append_to_file, delete_file, rename_file } from "/src/development/scripts/util/file_management"
-import { round_ram_cost } from "/src/development/scripts/util/rounding"
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { append_to_file, delete_file, rename_file } from "/src/scripts/util/file_management"
+import { round_ram_cost } from "/src/scripts/util/rounding"
 
-const LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/manage_hacking_curr.txt"
-const PRIOR_LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/manage_hacking_prior.txt"
+const LOG_FILENAME = "logs/manage_hacking_curr.txt"
+const PRIOR_LOG_FILENAME = "logs/manage_hacking_prior.txt"
 
 
 const RAM_INFO = {

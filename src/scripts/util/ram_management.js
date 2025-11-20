@@ -1,5 +1,5 @@
-import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
-import { round_ram_cost } from "/src/development/scripts/util/rounding"
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { round_ram_cost } from "/src/scripts/util/rounding"
 
 /**
  * @param {import("@ns").NS} ns

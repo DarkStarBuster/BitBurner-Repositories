@@ -1,6 +1,6 @@
-import { IN_DEV, PORT_IDS } from "/src/development/scripts/util/constant_utilities"
-import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
-import { round_ram_cost } from "/src/development/scripts/util/rounding"
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { round_ram_cost } from "/src/scripts/util/rounding"
 
 class BatchPartInfo {
   threads;

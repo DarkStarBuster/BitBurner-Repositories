@@ -1,10 +1,10 @@
-import { IN_DEV, PORT_IDS } from "/src/development/scripts/util/constant_utilities"
-import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
-import { round_ram_cost } from "/src/development/scripts/util/rounding"
-import { append_to_file, delete_file, rename_file } from "/src/development/scripts/util/file_management"
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
+import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { round_ram_cost } from "/src/scripts/util/rounding"
+import { append_to_file, delete_file, rename_file } from "/src/scripts/util/file_management"
 
-const LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/manage_server_prep_curr"
-const PRIOR_LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/manage_server_prep_prior"
+const LOG_FILENAME = "logs/manage_server_prep_curr"
+const PRIOR_LOG_FILENAME = "logs/manage_server_prep_prior"
 const FILE_EXTENSION = ".txt"
 
 /**

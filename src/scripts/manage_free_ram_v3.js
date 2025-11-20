@@ -1,5 +1,5 @@
-import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
-import { IN_DEV, PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { scan_for_servers } from "/src/scripts/util/scan_for_servers"
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
 
 
 /**

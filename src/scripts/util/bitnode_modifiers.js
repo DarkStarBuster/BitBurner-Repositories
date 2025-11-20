@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { PORT_IDS } from "/src/scripts/util/constant_utilities"
 
 // Could be done with only one of larger/smaller but I like completeness.
 
