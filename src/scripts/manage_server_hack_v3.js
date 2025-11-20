@@ -401,7 +401,7 @@ export async function main(ns) {
           hack_pid          = ns.exec("/scripts/util/hack_v3.js"  , server_to_use, {threads: batch_info.batch_hack.threads       ,temporary: true}, arg_flags.target, batch_info.batch_hack.addMsec)
         }
         let weaken_hack_pid = ns.exec("/scripts/util/dynamic/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_hack.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_hack.addMsec)
-        let grow_pid        = ns.exec("/scripts/util/grow_v3.js"  , server_to_use, {threads: batch_info.batch_grow.threads       ,temporary: true}, arg_flags.target, batch_info.batch_grow.addMsec)
+        let grow_pid        = ns.exec("/scripts/util/dynamic/grow_v3.js"  , server_to_use, {threads: batch_info.batch_grow.threads       ,temporary: true}, arg_flags.target, batch_info.batch_grow.addMsec)
         let weaken_grow_pid = ns.exec("/scripts/util/dynamic/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_grow.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_grow.addMsec)
         post_exec = performance.now()
 
