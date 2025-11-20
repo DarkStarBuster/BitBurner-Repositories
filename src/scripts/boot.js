@@ -6,7 +6,7 @@ async function setup_port_ids(ns) {
   let ports = []
   ns.tprint(`INFO: Setting up port IDs.`)
   for (let name in PORT_NAMES) {
-    let pid = ns.run("scripts/util/pid_provider.js")
+    let pid = ns.run("scripts/util/dynamic/pid_provider.js")
     if (pid === 0) {
       ns.tprint(`ERROR: Failed to run pid provider script. Aborting startup process.`)
       ns.exit()
