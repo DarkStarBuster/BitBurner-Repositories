@@ -520,7 +520,7 @@ export async function main(ns) {
   let contract_file = contract_info.contract_file
   let contract_type = contract_info.contract_type
   let contract_data = contract_info.contract_data
-  let contract_attempts = contract_info.contract_attempts
+  // let contract_attempts = contract_info.contract_attempts
 
   // ns.tprint(
   //   "\n"

@@ -108,7 +108,7 @@ export async function main(ns) {
                ,"contract_file"    : file
                ,"contract_type"    : ns.codingcontract.getContractType(file,server)
                ,"contract_data"    : ns.codingcontract.getData(file,server)
-               ,"contract_attempts": ns.codingcontract.getNumTriesRemaining(file,server)
+              //  ,"contract_attempts": ns.codingcontract.getNumTriesRemaining(file,server)
               }
               // ns.tprint(
               //   "Contract Server : " + server + "\n"
@@ -149,13 +149,13 @@ export async function main(ns) {
             }
           }
           else if (!we_can_solve_this(ns, file, server)) {
-            ns.print(
-              "Cannot solve it yet.\n"
-            + "Type: " + ns.codingcontract.getContractType(file,server) + "\n"
-            + "Data: \n" + ns.codingcontract.getData(file,server) + "\n"
-            + ns.codingcontract.getData(file,server).length + "\n"
-            + "Desc: \n" + ns.codingcontract.getDescription(file,server)
-            )
+            // ns.print(
+            //   "Cannot solve it yet.\n"
+            // + "Type: " + ns.codingcontract.getContractType(file,server) + "\n"
+            // + "Data: \n" + ns.codingcontract.getData(file,server) + "\n"
+            // + ns.codingcontract.getData(file,server).length + "\n"
+            // + "Desc: \n" + ns.codingcontract.getDescription(file,server)
+            // )
           }
           // File was persisted from previous loop iteration and still exists, so we persist again
           else if(
