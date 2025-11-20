@@ -1,3 +1,5 @@
+export const IN_DEV = true
+
 export const COLOURS = {
   black: '\u001b[30m',
   red: '\u001b[31m',

@@ -1,3 +1,4 @@
+import { IN_DEV } from "/src/development/scripts/util/constant_utilities"
 import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
 import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
 
@@ -115,7 +116,7 @@ export async function main(ns) {
               // + "Contract Type   : " + ns.codingcontract.getContractType(file,server) + "\n" 
               // + "Contract Data   : " + ns.codingcontract.getData(file,server) + "\n" 
               // )
-              let solver_pid = ns.exec("/scripts/solve_cct.js", server_to_use, 1, ...["--contract_info",JSON.stringify(contract_info)])
+              let solver_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/solve_cct.js", server_to_use, 1, ...["--contract_info",JSON.stringify(contract_info)])
 
               if (!(solver_pid === 0)) {
                 while(ns.isRunning(solver_pid)) {

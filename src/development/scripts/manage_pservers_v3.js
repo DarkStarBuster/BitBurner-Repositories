@@ -107,9 +107,7 @@ export async function main(ns) {
           !UPDATE_HANDLER.tryWrite(
             JSON.stringify({
               "action": "update_info",
-              "update_info": {
-                "server": server
-              }
+              "target": server
             })
           )
         ) {
@@ -159,9 +157,7 @@ export async function main(ns) {
               !UPDATE_HANDLER.tryWrite(
                 JSON.stringify({
                   "action": "update_info",
-                  "update_info": {
-                    "server": server
-                  }
+                  "target": server
                 })
               )
             ) {

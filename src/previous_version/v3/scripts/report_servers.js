@@ -355,6 +355,9 @@ function report_servers(ns, servers, filter){
   }
 }
 
+/**
+ * @param {import("@ns").NS} ns 
+ */
 function display_all_bitnode_info(ns) {
   const MAX_NUM_BITNODES = 13
   const MAX_BITNODE_LEVEL = 1
@@ -486,6 +489,7 @@ function display_bitnode_info(ns) {
     dflt_val = 1
     larger_colour = colourize(COLOUR.RED,9)
     smaller_colour = colourize(COLOUR.GREEN,9)
+    ns.tprint(keys[i])
     if (
         bitnode_mults[keys[i]].default != undefined
     &&  bitnode_mults[keys[i]].default != dflt_val
@@ -502,7 +506,7 @@ function display_bitnode_info(ns) {
     + (bitnode_info[keys[i]] == dflt_val ? colourize(COLOUR.YELLOW,9) : (bitnode_info[keys[i]] > dflt_val  ? larger_colour : smaller_colour))
     + " " + keys[i].padEnd(max_key_length) + ": "
     + (keys[i] == "StaneksGiftExtraSize" ?
-        String("+" + bitnode_info[keys[i]]).padStart(5)
+        String((bitnode_info[keys[i]] > 0 ? "+" : "") + bitnode_info[keys[i]]).padStart(5)
       : ns.formatPercent(bitnode_info[keys[i]] / dflt_val,0).padStart(5)
       ) + " "
     + colourize(COLOUR.BLACK,4)
@@ -660,24 +664,26 @@ async function display_server_info(ns, servers, server) {
     }
   }
 
-  ns.tprint("Target".padStart(8) + " | " + "Upgrades" + " | " + "Cost".padStart(10) + " | " + "Time")
-  for (let target = 1e13; target > server_info.moneyMax; target*0.1) {
-    let upg_needed = Math.ceil(Math.log(target/server_info.moneyMax) / Math.log(1.02))
-    let time_to_buy = total_production == 0 ? Infinity : ns.hacknet.hashCost("Increase Maximum Money", upg_needed) / (total_production / (1e6 / 4))
+  if (server_info.moneyMax > 0) {
+    ns.tprint("Target".padStart(8) + " | " + "Upgrades" + " | " + "Cost".padStart(10) + " | " + "Time")
+    for (let target = 1e13; (target > server_info.moneyMax && target >= 0.01); target*0.1) {
+      let upg_needed = Math.ceil(Math.log(target/server_info.moneyMax) / Math.log(1.02))
+      let time_to_buy = total_production == 0 ? Infinity : ns.hacknet.hashCost("Increase Maximum Money", upg_needed) / (total_production / (1e6 / 4))
 
-    let days = Math.floor(time_to_buy / (60*60*24))
-    let hours = Math.floor((time_to_buy - (days * 60*60*24)) / (60*60))
-    let minutes = Math.floor((time_to_buy - ((days * 60*60*24) + (hours * 60*60))) / (60))
-    let seconds = time_to_buy - ((days * 60*60*24) + (hours * 60*60) + (minutes * 60))
+      let days = Math.floor(time_to_buy / (60*60*24))
+      let hours = Math.floor((time_to_buy - (days * 60*60*24)) / (60*60))
+      let minutes = Math.floor((time_to_buy - ((days * 60*60*24) + (hours * 60*60))) / (60))
+      let seconds = time_to_buy - ((days * 60*60*24) + (hours * 60*60) + (minutes * 60))
 
-    ns.tprint(
-      ns.formatNumber(target).padStart(8) + " | "
-    + ns.formatNumber(upg_needed,0,10000).padStart(8) + " | "
-    + ns.formatNumber(ns.hacknet.hashCost("Increase Maximum Money", upg_needed),0,1e10).padStart(10) + " | "
-    + days + "D " + hours.toString().padStart(2) + "h " + minutes.toString().padStart(2) + "m " + ns.formatNumber(seconds,0).padStart(2) + "s"
-    ) 
-    target = target * 0.1
-    await ns.sleep(10)
+      ns.tprint(
+        ns.formatNumber(target).padStart(8) + " | "
+      + ns.formatNumber(upg_needed,0,10000).padStart(8) + " | "
+      + ns.formatNumber(ns.hacknet.hashCost("Increase Maximum Money", upg_needed),0,1e10).padStart(10) + " | "
+      + (time_to_buy === Infinity ? "Infinity" : (days + "D " + hours.toString().padStart(2) + "h " + minutes.toString().padStart(2) + "m " + ns.formatNumber(seconds,0).padStart(2) + "s"))
+      ) 
+      target = target * 0.1
+      await ns.sleep(10)
+    }
   }
 
 }

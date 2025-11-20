@@ -1,13 +1,33 @@
 import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
-import { PORT_IDS, COLOUR, colourize } from "/src/development/scripts/util/constant_utilities"
+import { IN_DEV, PORT_IDS, COLOUR, colourize } from "/src/development/scripts/util/constant_utilities"
 import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
 import { append_to_file, delete_file, rename_file } from "/src/development/scripts/util/file_management"
 import { round_ram_cost } from "/src/development/scripts/util/rounding"
 
 const LOG_COLOUR = colourize(COLOUR.MINT,9)
 const DEF_COLOUR = colourize(COLOUR.DEFAULT)
-const FILENAME = "control_servers_curr.txt"
-const PRIOR_FILENAME = "control_servers_prior.txt"
+const LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/control_servers_curr.txt"
+const PRIOR_LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/control_servers_prior.txt"
+const X_SIZE = 425
+const Y_SIZE = 274
+
+class ProcessInfo {
+  bitnode_modifiers_run = false;
+  control_parameters_pid = NaN;
+  control_pid = NaN;
+  server_info_handler_pid = NaN;
+  ram_manager_pid = NaN;
+  hacking_manager_pid = NaN;
+  hacknet_manager_pid = NaN;
+  pserver_manager_pid = NaN;
+  code_contract_manager_pid = NaN;
+  free_ram_manager_pid = NaN;
+  gang_manager_pid = NaN;
+  last_ui_update = NaN;
+
+  constructor() {
+  }
+}
 
 const RAM_INFO = {
   //[server] = {
@@ -58,18 +78,17 @@ function init(ns) {
  */
 function disable_logs(ns) {
   ns.disableLog("ALL")
-  ns.enableLog("exec")
 }
 
 /**
  * @param {import("@ns").NS} ns 
  */
 function init_file_log(ns){
-  if (ns.fileExists(PRIOR_FILENAME)) {
-    delete_file(ns, PRIOR_FILENAME)
+  if (ns.fileExists(PRIOR_LOG_FILENAME)) {
+    delete_file(ns, PRIOR_LOG_FILENAME)
   }
-  if (ns.fileExists(FILENAME)) {
-    rename_file(ns, FILENAME, PRIOR_FILENAME)
+  if (ns.fileExists(LOG_FILENAME)) {
+    rename_file(ns, LOG_FILENAME, PRIOR_LOG_FILENAME)
   }
 }
 
@@ -78,7 +97,58 @@ function init_file_log(ns){
  * @param {string} message 
  */
 function log(ns, message) {
-  append_to_file(ns, FILENAME, message)
+  append_to_file(ns, LOG_FILENAME, message + "\n")
+}
+
+/**
+ * @param {import("@ns").NS} ns
+ * @param {ProcessInfo} control_info
+ * @param {boolean} force_update
+ */
+function update_TUI(ns, control_info, force_update) {
+
+  if ((control_info.last_ui_update + 1000 > performance.now()) && !force_update) {
+    return
+  }
+  control_info.last_ui_update = performance.now()
+  let y_size = 0
+  let height_for_title_bar = 33
+  let height_per_line = 24
+  y_size = height_for_title_bar + (height_per_line * 11)
+  let tail_properties = ns.self().tailProperties
+  if (!(tail_properties === null)) {
+    if (!(tail_properties.height === y_size) || !(tail_properties.width === X_SIZE)) {
+      ns.ui.resizeTail(X_SIZE, y_size)
+    }
+  }
+
+  ns.clearLog()
+  let name_column_length = 30
+  const GOOD_COLOUR = colourize(COLOUR.LGREEN)
+  const BAD_COLOUR = colourize(COLOUR.RED)
+
+  if (!ns.isRunning(control_info.control_parameters_pid)) control_info.control_parameters_pid = NaN
+  if (!ns.isRunning(control_info.control_pid)) control_info.control_pid = NaN
+  if (!ns.isRunning(control_info.server_info_handler_pid)) control_info.server_info_handler_pid = NaN
+  if (!ns.isRunning(control_info.ram_manager_pid)) control_info.ram_manager_pid = NaN
+  if (!ns.isRunning(control_info.hacking_manager_pid)) control_info.hacking_manager_pid = NaN
+  if (!ns.isRunning(control_info.hacknet_manager_pid)) control_info.hacknet_manager_pid = NaN
+  if (!ns.isRunning(control_info.pserver_manager_pid)) control_info.pserver_manager_pid = NaN
+  if (!ns.isRunning(control_info.code_contract_manager_pid)) control_info.code_contract_manager_pid = NaN
+  if (!ns.isRunning(control_info.free_ram_manager_pid)) control_info.free_ram_manager_pid = NaN
+  if (!ns.isRunning(control_info.gang_manager_pid)) control_info.gang_manager_pid = NaN
+
+  ns.print("BitNode Modifiers Written".padEnd(name_column_length)     + ": " + (control_info.bitnode_modifiers_run === false ? BAD_COLOUR + "NO" : GOOD_COLOUR + "YES") + DEF_COLOUR)
+  ns.print("Control Parameters Process".padEnd(name_column_length)    + ": " + (isNaN(control_info.control_parameters_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("Control Process".padEnd(name_column_length)               + ": " + (isNaN(control_info.control_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("Server Info Handler Process".padEnd(name_column_length)   + ": " + (isNaN(control_info.server_info_handler_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("RAM Manager Process".padEnd(name_column_length)           + ": " + (isNaN(control_info.ram_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("Hacking Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.hacking_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("Hacknet Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.hacknet_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("PServer Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.pserver_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("Code Contract Manager Process".padEnd(name_column_length) + ": " + (isNaN(control_info.code_contract_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("Free RAM Manager Process".padEnd(name_column_length)      + ": " + (isNaN(control_info.free_ram_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  ns.print("Gang Manager Process".padEnd(name_column_length)          + ": " + (isNaN(control_info.gang_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
 }
 
 /**
@@ -106,11 +176,12 @@ function kill_all_other_processes(ns) {
 
 /**
  * @param {import("@ns").NS} ns Netscript Environment
- * @param {import("@ns").NetscriptPort} control_param_handler 
+ * @param {import("@ns").NetscriptPort} control_param_handler
  * @param {import("@ns").NetscriptPort} bitnode_mults_handler
+ * @param {import("@ns").NetscriptPort} server_info_handler
  */
-async function populate_control_and_bitnode_stats(ns, control_param_handler, bitnode_mults_handler) {
-  let pid = ns.exec("/scripts/util/bitnode_modifiers.js","home",{threads:1,temporary:true})
+async function populate_information_ports(ns, control_info, control_param_handler, bitnode_mults_handler, server_info_handler) {
+  let pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/bitnode_modifiers.js","home",{threads:1,temporary:true})
   if (pid === 0) {
     ns.tprint("ERROR Failed to launch BitNode Multipliers script.")
     ns.exit()
@@ -119,9 +190,21 @@ async function populate_control_and_bitnode_stats(ns, control_param_handler, bit
   while(bitnode_mults_handler.empty()) {
     await ns.sleep(4)
   }
+  control_info.bitnode_modifiers_run = true
 
-  pid = ns.exec("/scripts/util/control_parameters.js","home",{threads:1,temporary:true})
-  if (pid === 0) {
+  let server_info_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js", "home", {threads:1,temporary:true})
+  if (server_info_pid === 0) {
+    ns.tprint("ERROR Failed to launch Server Info script.")
+    ns.exit()
+  }
+
+  while(server_info_handler.empty()) {
+    await ns.sleep(4)
+  }
+  control_info.server_info_handler_pid = server_info_pid
+
+  let control_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js","home",{threads:1,temporary:true})
+  if (control_pid === 0) {
     ns.tprint("ERROR Failed to launch Control Parameters script.")
     ns.exit()
   }
@@ -129,19 +212,21 @@ async function populate_control_and_bitnode_stats(ns, control_param_handler, bit
   while(control_param_handler.empty()) {
     await ns.sleep(4)
   }
+  control_info.control_parameters_pid = control_pid
 
-  return Promise.resolve(pid)
+  return Promise.resolve()
 }
 
 /**
  * Start the RAM Managing process
  * 
  * @param {import("@ns").NS} ns - Netscript Environment
- * @param {number} control_pid - PID of the Control Parameter 
+ * @param {number} control_pid - PID of the Control Parameter handling process
+ * @param {number} server_info_pid - PID of the Server Info handling process
  * @param {import("@ns").NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
  */
-async function start_ram_manager(ns, control_pid, ram_provide_handler) {
-  let ram_pid = ns.exec("/scripts/manage_ram_v2.js", "home", {threads:1,temporary:true})
+async function start_ram_manager(ns, control_info, ram_provide_handler) {
+  let ram_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js", "home", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
 
   if(ram_pid === 0) {
     log(ns, "ERROR Failed to launch RAM Manager script.")
@@ -149,12 +234,26 @@ async function start_ram_manager(ns, control_pid, ram_provide_handler) {
     ns.exit()
   }
   log(ns, "RAM Manager launched successfully. Await RAM Manager Initialisation.")
-  while(ram_provide_handler.empty()) {
-    await ns.sleep(4)
+  control_info.ram_manager_pid = ram_pid
+  
+  let awaiting_response = true
+  let ram_manager_response = {}
+  while (awaiting_response) {
+    while(ram_provide_handler.empty()) {
+      await ns.sleep(4)
+    }
+    log(ns, ram_provide_handler.peek().toString())
+    ram_manager_response = JSON.parse(ram_provide_handler.peek())
+    if (parseInt(ram_manager_response.requester) === ns.pid) {
+      awaiting_response = false
+      ram_provide_handler.read()
+    }
+    else {
+      await ns.sleep(4)
+    }
   }
 
-  let ram_manager_response = ram_provide_handler.read()
-  if (!(ram_manager_response === "OK")) {
+  if (!(ram_manager_response.result === "OK")) {
     log(ns, "ERROR RAM Manager did not Initialise successfully:")
     log(ns,ram_manager_response)
     ns.tprint("ERROR RAM Manager did not Initialise successfully:")
@@ -163,7 +262,13 @@ async function start_ram_manager(ns, control_pid, ram_provide_handler) {
   }
   log(ns, "RAM Manager Initialised successfully.")
 
-  let ram_response = await request_ram(ns, ns.getScriptRam("/scripts/manage_ram_v2.js") + ns.getScriptRam("/scripts/control_v4.js") + ns.getScriptRam("/scripts/util/control_parameters.js"))
+  let ram_response = await request_ram(
+    ns
+   ,  ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js")
+    + ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/control_v4.js")
+    + ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js")
+    + ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js")
+  )
 
   if (!(ram_response.result === "OK")) {
     log(ns, "ERROR RAM Manager somehow failed to provide RAM for its, this and the control_parameter scripts existance despite all of them running up until this point")
@@ -173,33 +278,29 @@ async function start_ram_manager(ns, control_pid, ram_provide_handler) {
     ns.exit()
   }
   else {
-    let calc_free_ram = round_ram_cost(
-      ram_response.amount 
-    - (  ns.getScriptRam("/scripts/manage_ram_v2.js")
-       + ns.getScriptRam("/scripts/control_v4.js")
-       + ns.getScriptRam("/scripts/util/control_parameters.js")
-      )
-    )
     RAM_INFO[ram_response.server] = {
       assigned_ram: ram_response.amount,
-      free_ram: calc_free_ram,
       processes: {}
     }
     RAM_INFO[ram_response.server].processes[ram_pid] = {
-      ram_cost: ns.getScriptRam("/scripts/manage_ram_v2.js"),
-      filename: "/scripts/manage_ram_v2.js"
+      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js"),
+      filename: (IN_DEV ? "/development" : "") + "/scripts/manage_ram_v2.js"
     }
     RAM_INFO[ram_response.server].processes[ns.pid] = {
-      ram_cost: ns.getScriptRam("/scripts/control_v4.js"),
-      filename: "/scripts/control_v4.js"
+      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/control_v4.js"),
+      filename: (IN_DEV ? "/development" : "") + "/scripts/control_v4.js"
     }
-    RAM_INFO[ram_response.server].processes[control_pid] = {
-      ram_cost: ns.getScriptRam("/scripts/util/control_parameters.js")
-     ,filename: "/scripts/util/control_parameters.js"
+    RAM_INFO[ram_response.server].processes[control_info.control_parameters_pid] = {
+      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js")
+     ,filename: (IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js"
+    }
+    RAM_INFO[ram_response.server].processes[control_info.server_info_handler_pid] = {
+      ram_cost: ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js")
+     ,filename: (IN_DEV ? "/development" : "") + "/scripts/util/handle_server_info.js" 
     }
   }
 
-  log(ns,"RAM Manager has provided RAM for its, this and the control_parameter scripts own existence.")
+  log(ns,"RAM Manager has provided RAM for its, this, the control_parameter and the handle_server_info scripts existence.")
   log(ns,"Server \"" + ram_response.server + "\" has " + RAM_INFO[ram_response.server].assigned_ram + " assigned RAM. And " + RAM_INFO[ram_response.server].free_ram + " free RAM")
 
   return Promise.resolve()
@@ -212,9 +313,7 @@ async function start_ram_manager(ns, control_pid, ram_provide_handler) {
  * @param {string} server
  */
 function add_child_process(ns, pid, filename, server) {
-  log(ns, "Adding Child Process using RAM from \"" + server + "\" to run " + filename + " (" + pid + ") at a cost of " + ns.getScriptRam(filename) + " RAM")
-  let calc_free_ram = round_ram_cost(RAM_INFO[server].free_ram - ns.getScriptRam(filename))
-  RAM_INFO[server].free_ram = calc_free_ram
+  log(ns, `Adding Child Process using RAM from ${server} to run ${filename} (${pid}) at a cost of ${ns.formatRam(ns.getScriptRam(filename))} RAM`)
   RAM_INFO[server].processes[pid] = {
     ram_cost: ns.getScriptRam(filename),
     filename: filename
@@ -223,88 +322,102 @@ function add_child_process(ns, pid, filename, server) {
 
 /**
  * @param {import("@ns").NS} ns
+ * @param {number} pid 
  * @param {string} filename 
- * @returns {boolean}
+ * @param {string} server
+ */
+function remove_child_process(ns, pid, filename, server) {
+  log(ns, `Removing Child Process using RAM from ${server} to run ${filename} (${pid}) at a cost of ${ns.formatRam(ns.getScriptRam(filename))} RAM`)
+  delete RAM_INFO[server].processes[pid]
+}
+
+/**
+ * @param {import("@ns").NS} ns
+ * @param {string} filename 
+ * @returns {{running: boolean, server?: string, pid?: number}}
  */
 function child_is_running(ns, filename) {
   log(ns, "Check if Child Process using the " + filename + " script is running.")
-  let runing = false
+  let running = false
   let pid_found
   let server_name
   for (let server in RAM_INFO) {
     for(let pid in RAM_INFO[server].processes) {
       if (RAM_INFO[server].processes[pid].filename == filename) {
-        runing = ns.isRunning(parseInt(pid))
+        running = ns.isRunning(parseInt(pid))
         server_name = server
         pid_found = pid
-        log(ns, "Child Process using the " + filename + " script found on \"" + server_name + "\", Running Status: " + runing)
+        log(ns, "Child Process using the " + filename + " script found on \"" + server_name + "\", Running Status: " + running)
       }
     }
   }
 
   if (!(pid_found === undefined)) {
-    if (!runing) {
+    if (!running) {
       log(ns, "Clean up RAM State since Child Process was not runing.")
-      let calc_free_ram = round_ram_cost(RAM_INFO[server_name].free_ram + RAM_INFO[server_name].processes[pid_found].ram_cost)
-      RAM_INFO[server_name].free_ram = calc_free_ram
       delete RAM_INFO[server_name].processes[pid_found]
     }
   }
 
-  return runing
+  return {
+    running: running
+   ,server : server_name
+   ,pid    : pid_found
+  }
 }
 /**
  * @param {import("@ns").NS} ns - NetScript Environment
  * @param {string} filename - Script to Launch
+ * @param {string?} server
  */
-async function launch_child(ns, filename) {
+async function launch_child(ns, filename, server) {
+
+  let get_new_server = (server === undefined)
+  let server_to_use = server
   let ram_needed = ns.getScriptRam(filename)
-  let server_to_use
-  for (let server in RAM_INFO) {
-    log(ns,"Server " + server + " has free_ram: " + RAM_INFO[server].free_ram)
-    if (RAM_INFO[server].free_ram >= ram_needed) {
-      server_to_use = server
-      break
+  
+  if (get_new_server) {
+    let ram_response = await request_ram(ns, ram_needed)
+    if (!(ram_response.result === "OK")) {
+      log(ns, "ERROR RAM Manager failed to provide RAM to launch child" + filename + "process.")
+      log(ns, JSON.stringify(ram_response))
+      ns.tprint("ERROR RAM Manager failed to provide RAM to launch child" + filename + "process.")
+      ns.tprint(JSON.stringify(ram_response))
+      return Promise.resolve(pid)
     }
+    server_to_use = ram_response.server
   }
 
-  if (server_to_use === undefined) {
-    // We have no free ram allocated to launch this with apparently
-    // This is currently unexpected since we don't release any of our allocated RAM
-    ns.tprint("ERROR Unable to launch child process " + filename + ", due to no free allocated RAM.")
-    await ns.sleep(10000)
-  }
-  else {
-    let pid = ns.exec(filename, server_to_use, {threads:1,temporary:true})
-    if (pid === 0) {
-      ns.tprint("ERROR Exec failed to launch child process " + filename)
-    }
-    else {
-      add_child_process(ns, pid, filename, server_to_use)
-    }
-  }
-  return Promise.resolve()
+  ns.enableLog("exec")
+  let pid = ns.exec(filename, server_to_use, {threads:1,temporary:true})
+  ns.disableLog("exec")
+  if (pid === 0) {ns.tprint(`ERROR Exec failed to launch child process ${filename} despite RAM Manager providing RAM`)}
+  else           {add_child_process(ns, pid, filename, server_to_use)}
+
+  return Promise.resolve(pid)
 }
 
 /**
  *  @param {import("@ns").NS} ns
  */
-async function start_managers(ns) {
+async function start_managers(ns, control_info) {
   log(ns, "Calculate amount of RAM we need for our managers.")
   let ram_needed = 0
-  ram_needed += ns.getScriptRam("/scripts/manage_hacking_v4.js")
+  ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js")
   log(ns, "Add Hack/Prep Manager Manager script RAM. Total: " + ram_needed)
   if (ns.getServerMaxRam("home") >= 64) {
-    ram_needed += ns.getScriptRam("/scripts/manage_hacknet_v4.js")
+    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js")
     log(ns, "Add Hacknet Manager script RAM. Total: " + ram_needed)
-    ram_needed += ns.getScriptRam("/scripts/manage_pservers_v4.js")
+    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v4.js")
     log(ns, "Add Hack/Prep Manager Manager script RAM. Total: " + ram_needed)
   }
   if (ns.getServerMaxRam("home") >= 128) {
-    ram_needed += ns.getScriptRam("/scripts/manage_codecontracts.js")
+    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js")
     log(ns, "Add Code Contract Manager script RAM. Total: " + ram_needed)
-    ram_needed += ns.getScriptRam("/scripts/manage_free_ram_v3.js")
+    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_free_ram_v3.js")
     log(ns, "Add Free RAM Manager script RAM. Total: " + ram_needed)
+    ram_needed += ns.getScriptRam((IN_DEV ? "/development" : "") + "/scripts/manage_gang.js")
+    log(ns, "Add Gang Manager script RAM. Total: " + ram_needed)
   }
 
   log(ns, "Request " + ram_needed + " RAM for our other Manager processes.")
@@ -334,37 +447,59 @@ async function start_managers(ns) {
     log(ns,"Server \"" + ram_response.server + "\" has had " + ram_response.amount + " RAM assigned to us.")
   }
 
-  let pid = ns.exec("/scripts/manage_hacking_v4.js",ram_response.server,{threads:1,temporary:true})
+  let pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js",ram_response.server,{threads:1,temporary:true})
   if (pid === 0) {
     log(ns, "ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
     ns.tprint("ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
   }
-  else add_child_process(ns,pid,"/scripts/manage_hacking_v4.js",ram_response.server)
+  else {
+    add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js",ram_response.server)
+    control_info.hacking_manager_pid = pid
+  }
 
   if (ns.getServerMaxRam("home") >= 64) {
-    pid = ns.exec("/scripts/manage_hacknet_v4.js",ram_response.server,{threads:1,temporary:true})
+    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js",ram_response.server,{threads:1,temporary:true})
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
     }
-    else add_child_process(ns,pid,"/scripts/manage_hacknet_v4.js",ram_response.server)
+    else {
+      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js",ram_response.server)
+      control_info.hacknet_manager_pid = pid
+    }
   
-    pid = ns.exec("/scripts/manage_pservers_v3.js",ram_response.server,{threads:1,temporary:true})
+    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v3.js",ram_response.server,{threads:1,temporary:true})
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
     }
-    else add_child_process(ns,pid,"/scripts/manage_pservers_v3.js",ram_response.server)
+    else {
+      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v3.js",ram_response.server)
+      control_info.pserver_manager_pid = pid
+    }
     // Either of these two processes can enqueue the Free Ram Manager
   }
 
   if (ns.getServerMaxRam("home") >= 128) {
-    pid = ns.exec("/scripts/manage_codecontracts.js",ram_response.server,{threads:1,temporary:true})
+    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js",ram_response.server,{threads:1,temporary:true})
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Code Contract Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Code Contract Manager after being allocated RAM.")
     }
-    else add_child_process(ns,pid,"/scripts/manage_codecontracts.js",ram_response.server)
+    else {
+      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js",ram_response.server)
+      control_info.code_contract_manager_pid = pid
+    }
+
+    pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/manage_gang.js",ram_response.server,{threads:1,temporary:true})
+    if (pid === 0) {
+      log(ns, "ERROR Failed to launch Gang Manager after being allocated RAM.")
+      ns.tprint("ERROR Failed to launch Gang Manager after being allocated RAM.")
+    }
+    else {
+      add_child_process(ns,pid,(IN_DEV ? "/development" : "") + "/scripts/manage_gang.js",ram_response.server)
+      control_info.gang_manager_pid = pid
+    }
   }
   // if (ns.getServerMaxRam("home") > 128) {
   //   update = {
@@ -390,10 +525,16 @@ export async function main(ns) {
   const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
   const RAM_REQUEST_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
   const RAM_PROVIDE_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
+  let control_info = new ProcessInfo
 
   init(ns)
+  update_TUI(ns, control_info, true)
+  ns.ui.openTail()
+  ns.ui.resizeTail(X_SIZE, Y_SIZE)
+
 
   ns.ui.setTailTitle("Control Script V4.0 - PID: " + ns.pid)
+  control_info.control_pid = ns.pid
 
   CONTROL_PARAM_HANDLER.clear()
   BITNODE_MULTS_HANDLER.clear()
@@ -424,25 +565,29 @@ export async function main(ns) {
   }
 
   log(ns,"Gather Statistics of the environment we are working in.")
-  populate_all_server_stats(ns, SERVER_INFO_HANDLER)
 
   log(ns,"Ensure our control parameters are written to their ports.")
-  let control_pid = await populate_control_and_bitnode_stats(ns, CONTROL_PARAM_HANDLER, BITNODE_MULTS_HANDLER)
+  await populate_information_ports(ns, control_info, CONTROL_PARAM_HANDLER, BITNODE_MULTS_HANDLER, SERVER_INFO_HANDLER)
+  update_TUI(ns, control_info, true)
 
   log(ns,"Start the RAM manager.")
-  await start_ram_manager(ns, control_pid, RAM_PROVIDE_HANDLER)
+  await start_ram_manager(ns, control_info, RAM_PROVIDE_HANDLER)
+  update_TUI(ns, control_info, true)
 
   log(ns,"Start our other managers.")
-  await start_managers(ns)
+  await start_managers(ns, control_info)
+  update_TUI(ns, control_info, true)
 
   log(ns,"Starting Loop")
   while(true){
     log(ns, "Awaiting Update we can act on.")
+    update_TUI(ns, control_info)
     let awaiting_update = true
     let update = {}
     while (awaiting_update) {
       while(UPDATE_HANDLER.empty()) {
         await ns.sleep(4)
+        update_TUI(ns, control_info)
       }
       update = JSON.parse(UPDATE_HANDLER.peek())
       if (
@@ -465,43 +610,107 @@ export async function main(ns) {
       // let server_to_target = request_action.target 
       // let ram_needed = 0
       let filename = ""
+      let pid
+      let run_resp
       switch (update.request_action.script_action) {
         case "params":
           // Launch Control Parameters script
-          filename = "/scripts/util/control_parameters.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/util/control_parameters.js"
+          run_resp = child_is_running(ns, filename)
+          if (run_resp.running) {
+            ns.kill(run_resp.pid)
+            remove_child_process(ns, run_resp.pid, filename, run_resp.server)
+            control_info.control_parameters_pid = NaN
+          }
+          pid = await launch_child(ns, filename, run_resp.server)
+          control_info.control_parameters_pid = pid
           break
         case "BNMult":
           // Launch Populate Bitnode Multipliers script
-          filename = "/scripts/util/bitnode_modifiers.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/util/bitnode_modifiers.js"
+          if (!child_is_running(ns, filename)) {
+            pid = await launch_child(ns, filename)
+            control_info.bitnode_modifiers_run = true
+          }
+          break
+        case "reboot":
+          // Launch RAM Manager script
+          filename = (IN_DEV ? "/development" : "") + "/scripts/reboot.js"
+          if (!child_is_running(ns, filename)) {
+            ns.exec(filename)
+          }
           break
         case "manager":
           // Launch Hack/Prep Manager Manager script
-          filename = "/scripts/manage_hacking_v4.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_hacking_v4.js"
+          if (!child_is_running(ns, filename)) {
+            pid = await launch_child(ns, filename)
+            control_info.hacking_manager_pid = pid
+          }
           break
         case "hacknet":
           // Launch Automatic Hacknet Upgrade Manager script
-          filename = "/scripts/manage_hacknet_v4.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_hacknet_v4.js"
+          if (!child_is_running(ns, filename)) {
+            pid = await launch_child(ns, filename)
+            control_info.hacknet_manager_pid = pid
+          }
           break
         case "pserver":
           // Launch Automatic Personal Server Manager script
-          filename = "/scripts/manage_pservers_v3.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_pservers_v3.js"
+          if (!child_is_running(ns, filename)) {
+            pid = await launch_child(ns, filename)
+            control_info.pserver_manager_pid = pid
+          }
           break
         case "freeram":
           // Launch Free RAM Consumer script
-          filename = "/scripts/manage_free_ram_v3.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_free_ram_v3.js"
+          if (!child_is_running(ns, filename)) {
+            pid = await launch_child(ns, filename)
+            control_info.free_ram_manager_pid = pid
+          }
+          break
+        case "reboot_freeram":
+          // Kill and then Relaunch Free RAM Consumer script
+          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_free_ram_v3.js"
+          run_resp = child_is_running(ns, filename)
+          if (run_resp.running) {
+            ns.tprint(run_resp.pid)
+            ns.kill(parseInt(run_resp.pid))
+            remove_child_process(ns, run_resp.pid, filename, run_resp.server)
+            control_info.free_ram_manager_pid = NaN
+          }
+          pid = await launch_child(ns, filename, run_resp.server)
+          control_info.free_ram_manager_pid = pid
           break
         case "cctmang":
           // Launch Code Contract Manager script
-          filename = "/scripts/manage_codecontracts.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_codecontracts.js"
+          if (!child_is_running(ns, filename)) {
+            pid = await launch_child(ns, filename)
+            control_info.code_contract_manager_pid = pid
+          }
+          break
+        case "reboot_gang":
+          // Kill and then Relaunch Gang Manger script
+          filename = (IN_DEV ? "/development" : "") + "/scripts/manage_gang.js"
+          run_resp = child_is_running(ns, filename)
+          if (run_resp.running) {
+            ns.tprint(run_resp.pid)
+            ns.kill(parseInt(run_resp.pid))
+            remove_child_process(ns, run_resp.pid, filename, run_resp.server)
+            control_info.gang_manager_pid = NaN
+          }
+          pid = await launch_child(ns, filename, run_resp.server)
+          control_info.gang_manager_pid = pid
           break
       }
-
       if (filename === "") {
         ns.tprint("ERROR Action '" + update.request_action.script_action + "' requested, but not known.")
       }
-      else if (!child_is_running(ns, filename)) {
-        await launch_child(ns, filename)
-      }  
+       
     }
     else if (update.action === "death_react") {
       log(ns,"Performing Death Reaction")

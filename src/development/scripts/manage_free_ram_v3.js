@@ -1,5 +1,5 @@
 import { scan_for_servers } from "/src/development/scripts/util/scan_for_servers"
-import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { IN_DEV, PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 
 
 /**
@@ -179,7 +179,7 @@ async function release_ram(ns, server, ram_request_handler, ram_provide_handler)
     return Promise.resolve(false)
   }
   else {
-    ns.print(LOG_COLOUR + "RAM: Response has freed our RAM")
+    ns.print("RAM: Response has freed our RAM")
     return Promise.resolve(true)
   }
 }
@@ -290,7 +290,7 @@ export async function main(ns) {
     //all_servers = ["home"]
     //ns.print(all_servers)
     for (let server of all_servers){
-      ns.print("Check server " + server)
+      //ns.print("Check server " + server)
       if (!p_servers_array.includes(server)) {
         p_servers[server] = {
           "server_ram": ns.getServerMaxRam(server),
@@ -308,11 +308,11 @@ export async function main(ns) {
       switch (server) {
         case "pserv-0":
           server_to_check = "home"
-          filename = "/scripts/util/weaken_for_exp.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/util/weaken_for_exp.js"
           break
         case "pserv-24":
           server_to_check = "pserv-23"
-          filename = "/scripts/util/share.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/util/share.js"
           break
         default:
           if (server.includes("pserv")) {
@@ -321,7 +321,7 @@ export async function main(ns) {
           else {
             server_to_check = "home"
           }
-          filename = "/scripts/util/weaken_for_exp.js"
+          filename = (IN_DEV ? "/development" : "") + "/scripts/util/weaken_for_exp.js"
           break
       }
 

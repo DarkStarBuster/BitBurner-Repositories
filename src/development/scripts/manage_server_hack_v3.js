@@ -1,13 +1,71 @@
-import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { IN_DEV, PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
 import { round_ram_cost } from "/src/development/scripts/util/rounding"
+
+class BatchPartInfo {
+  threads;
+  addMsec;
+
+  constructor() {
+    this.threads = 0
+    this.addMsec = 0
+  }
+}
+
+class BatchInfo {
+  batch_cnt_to_saturate;
+  batches_running;
+  weaken_time;
+  ram_needed;
+  do_hacks;
+  batch_hack;
+  batch_weaken_hack;
+  batch_grow;
+  batch_weaken_grow;
+
+  constructor() {
+    this.batch_cnt_to_saturate = 0
+    this.batches_running = 0
+    this.weaken_time = 0
+    this.ram_needed = 0
+    this.do_hacks = false
+    this.batch_hack = new BatchPartInfo()
+    this.batch_weaken_hack = new BatchPartInfo()
+    this.batch_grow = new BatchPartInfo()
+    this.batch_weaken_grow = new BatchPartInfo()
+  }
+}
+
+class ProcessInfo {
+  target;
+  pid;
+  mock_server;
+  batch_info;
+  current_action;
+  last_ui_update;
+  max_server_name_length;
+
+  /** @param {import("@ns").NS} ns  */
+  constructor(ns, target, pid) {
+    this.target      = target
+    this.pid         = pid
+    this.mock_server = ns.formulas.mockServer()
+    this.batch_info  = new BatchInfo()
+    this.current_action = ""
+    this.last_ui_update = 0
+    this.max_server_name_length = 0
+  }
+}
+
+const X_SIZE = 650
+const Y_SIZE = 245
 
 /**
  * @param {import("@ns").NS} ns 
  * @param {string} target_server 
  * @param {import("@ns").NetscriptPort} control_params
  * @param {import("@ns").Server} mock_server
- * @returns A batch definition.
+ * @returns {BatchInfo} A batch definition.
  */
 function construct_batch(ns, target_server, control_params, mock_server) {
   let player_info = ns.getPlayer()
@@ -74,10 +132,10 @@ function construct_batch(ns, target_server, control_params, mock_server) {
   batch_info.batch_cnt_to_saturate = Math.max(Math.floor(weaken_time / control_params.hacker.hack_batch_time_interval),1)
   batch_info.weaken_time = weaken_time
   batch_info.ram_needed = ram_needed
+  batch_info.do_hacks = do_hacks
   batch_info.batch_hack = {}
   batch_info.batch_hack.threads = hack_threads
   batch_info.batch_hack.addMsec = hack_delay
-  batch_info.batch_hack.do_hacks = do_hacks
   batch_info.batch_weaken_hack = {}
   batch_info.batch_weaken_hack.threads = weaken_threads_for_hack
   batch_info.batch_weaken_hack.addMsec = weaken_hack_delay
@@ -89,6 +147,35 @@ function construct_batch(ns, target_server, control_params, mock_server) {
   batch_info.batch_weaken_grow.addMsec = weaken_grow_delay
 
   return batch_info
+}
+
+/**
+ * 
+ * @param {import("@ns").NS} ns 
+ * @param {ProcessInfo} info 
+ */
+function update_TUI(ns, info, force_update) {
+  if ((info.last_ui_update + 1000 > performance.now()) && !force_update) {
+    return
+  }
+  info.last_ui_update = performance.now()
+  let tail_properties = ns.self().tailProperties
+  if (!(tail_properties === null)) {
+    if (!(tail_properties.height === Y_SIZE) || !(tail_properties.width === X_SIZE)) {
+      ns.ui.resizeTail(X_SIZE, Y_SIZE)
+    }
+  }
+
+  ns.clearLog()
+  ns.print(`╔${"╦".padStart(36,"═").padEnd(65, "═")}╗`)
+  ns.print(`║ Target Server: ${info.target.padStart(info.max_server_name_length)} ║ Doing Hacks: ${info.batch_info.do_hacks.toString().padStart(14)} ║`)
+  ns.print(`║ Ram Needed: ${ns.formatRam(info.batch_info.ram_needed.toFixed(0)).padStart(info.max_server_name_length + 3)} ║ Server: ${("$" + ns.formatNumber(info.mock_server.moneyAvailable,2,1e3)).padStart(8)} / ${("$" + ns.formatNumber(info.mock_server.moneyMax,2,1e3)).padStart(8)} ║`)
+  ns.print(`║ Batches Needed: ${info.batch_info.batch_cnt_to_saturate.toFixed(0).padStart(info.max_server_name_length - 1)} ║ Batches Running: ${info.batch_info.batches_running.toFixed(0).padStart(10)} ║`)
+  ns.print(`║ Batch Hack Threads: ${info.batch_info.batch_hack.threads.toFixed(0).padStart(info.max_server_name_length - 5)} ║ Weaken Hack Threads: ${info.batch_info.batch_weaken_hack.threads.toFixed(0).padStart(6)} ║`)
+  ns.print(`║ Batch Grow Threads: ${info.batch_info.batch_grow.threads.toFixed(0).padStart(info.max_server_name_length - 5)} ║ Weaken Grow Threads: ${info.batch_info.batch_weaken_grow.threads.toFixed(0).padStart(6)} ║`)
+  ns.print(`╠${"╩".padStart(36,"═").padEnd(65, "═")}╣`)
+  ns.print(`║ Current Action: ${info.current_action.padEnd(47)} ║`)
+  ns.print(`╚${"".padStart(65, "═")}╝`)
 }
 
 /** @param {import("@ns").NS} ns */
@@ -104,19 +191,23 @@ export async function main(ns) {
   ns.disableLog("ALL")
   //ns.enableLog("exec")
 
-  ns.ui.setTailTitle("Manage Server Hacking V3.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
+  ns.ui.setTailTitle("Manage Server Hacking V3.0 - PID: " + our_pid)
 
   if (arg_flags.target == "") {
     ns.tprint("No Target Server specified for manage_server.js")
     ns.exit()
   }
+  let PROCESS_INFO = new ProcessInfo(ns, arg_flags.target, our_pid)
+  PROCESS_INFO.current_action = "Awaiting Control Parameters"
   
   while(CONTROL_PARAMETERS.empty()){
     await ns.sleep(4)
   }
 
+  PROCESS_INFO.current_action = "Prepping Future Cleanup"
+
   let control_params = JSON.parse(CONTROL_PARAMETERS.peek())
-  let target_info = JSON.parse(SERVER_INFO_HANDLER.peek()[arg_flags.target])
+  let target_info = JSON.parse(SERVER_INFO_HANDLER.peek())[arg_flags.target]
   let batch_tracker = []
   let batches_needed = 0
   let ram_needed = 0
@@ -161,15 +252,18 @@ export async function main(ns) {
   mock_server.smtpPortOpen = true
   mock_server.sqlPortOpen = true
   mock_server.sshPortOpen = true
+  let prior_ui_update_time = performance.now()
+  update_TUI(ns, PROCESS_INFO, true)
 
   while(true) {
+    await ns.sleep(4)    
     // TODO: We will need to deal with the situation where we are hacking the server and we either get into a situation where we are no longer prepped between
     //       batch launches, *or* the Hacknet Servers are targeting the same server as we are and are actively increasing the Maximum Money our server can
     //       hold. Perhaps just throw in some extra hack and weaken threads?
 
     //ns.print("Updating Control Parameters")
     control_params = JSON.parse(CONTROL_PARAMETERS.peek())
-    target_info = JSON.parse(SERVER_INFO_HANDLER.peek()[arg_flags.target])
+    target_info = JSON.parse(SERVER_INFO_HANDLER.peek())[arg_flags.target]
     //ns.print("Begining analysis")
     mock_server.hackDifficulty       = ns.getServerSecurityLevel(arg_flags.target)
     mock_server.maxRam               = target_info.max_ram
@@ -179,8 +273,15 @@ export async function main(ns) {
     mock_server.numOpenPortsRequired = target_info.num_ports_req
     mock_server.requiredHackingSkill = target_info.hack_lvl_req
     mock_server.serverGrowth         = target_info.growth
-
+    
+    PROCESS_INFO.mock_server = mock_server
+    PROCESS_INFO.current_action = "Prepping Batch Information"
+    PROCESS_INFO.max_server_name_length = control_params.servers.max_name_length
+    update_TUI(ns, PROCESS_INFO, true)
     let batch_info = construct_batch(ns, arg_flags.target, control_params, mock_server)
+
+    PROCESS_INFO.batch_info = batch_info
+    PROCESS_INFO.batch_info.batches_running = batch_tracker.length
 
     //ns.print("Analyis complete; batch constructed.\n"+JSON.stringify(batch_info))
 
@@ -203,6 +304,8 @@ export async function main(ns) {
       let batch_server       = next_batch[1]
       let batch_ram_use      = next_batch[2]
       // Wait for the batch to finish
+      PROCESS_INFO.current_action = "Waiting for batch with PID " + batch_pid_to_watch + " to finish"
+      update_TUI(ns, PROCESS_INFO, true)
       while(ns.isRunning(batch_pid_to_watch)) {
         await ns.sleep(4)
       }
@@ -210,19 +313,26 @@ export async function main(ns) {
 
       if (batch_tracker.length >= batches_needed) {
         // Release the Ram of the batch that just finished.
+        PROCESS_INFO.current_action = "Releasing RAM due to more batches being queued than needed"
+        update_TUI(ns, PROCESS_INFO, true)
         await release_ram(ns, batch_server, batch_ram_use)
         launch_batch = false
       }
       else if (batch_tracker.length < batches_needed) {
         // Launch a new batch with the server and RAM of the previous batch
+        PROCESS_INFO.current_action = "Launching a new batch "
         if (batch_ram_use > ram_needed) {
+          PROCESS_INFO.current_action += "using existing RAM but releasing a bit of it"
+          update_TUI(ns, PROCESS_INFO, true)
           // Release the difference between the two rams
           await release_ram(ns, batch_server, batch_ram_use - ram_needed)
           // And use the remaining RAM in the new batch
           launch_batch = true
           server_to_use = batch_server
         }
-        if (batch_ram_use < ram_needed) {
+        else if (batch_ram_use < ram_needed) {
+          PROCESS_INFO.current_action += "releasing the old RAM and getting new RAM"
+          update_TUI(ns, PROCESS_INFO, true)
           // Release the RAM from the previous batch
           await release_ram(ns, batch_server, batch_ram_use)
           // Request new RAM
@@ -236,14 +346,18 @@ export async function main(ns) {
             launch_batch = false
           }
         }
-        if (batch_ram_use = ram_needed)
+        else if (batch_ram_use = ram_needed)
         {
+          PROCESS_INFO.current_action += "using the exact same RAM"
+          update_TUI(ns, PROCESS_INFO, true)
           launch_batch = true
           server_to_use = batch_server
         }
       }
     }
     else if (batch_tracker.length < batches_needed) {
+      PROCESS_INFO.current_action = "Launching new batch by getting new RAM"
+      update_TUI(ns, PROCESS_INFO, true)
       // Request new RAM
       let response = await request_ram(ns, ram_needed)
       // And use the RAM in the new batch
@@ -253,6 +367,8 @@ export async function main(ns) {
       }
       else {
         launch_batch = false
+        PROCESS_INFO.current_action = "Unable to get new RAM for new batch"
+        update_TUI(ns, PROCESS_INFO, true)
 
         // Check if a batch that we launched earlier has died and we can launch another batch using its RAM
         if (batch_tracker.length > 0) {
@@ -276,20 +392,22 @@ export async function main(ns) {
       if (launch_batch) {
         pre_exec = performance.now()
         let await_time = (post_exec === undefined) ? control_params.hacker.hack_batch_time_interval : Math.max(control_params.hacker.hack_batch_time_interval - (pre_exec - post_exec), 10)
+        PROCESS_INFO.current_action = "Awaiting " + ns.formatNumber(await_time,0) + " milliseconds"
+        update_TUI(ns, PROCESS_INFO, true)
         await ns.sleep(await_time)
-        ns.print("Execution time of loop: " + (pre_exec - post_exec) + " / " + await_time + " / " + control_params.hacker.hack_batch_time_interval)
+        //ns.print("Execution time of loop: " + (pre_exec - post_exec) + " / " + await_time + " / " + control_params.hacker.hack_batch_time_interval)
         let hack_pid = 0
-        if (batch_info.batch_hack.do_hacks) {
-          hack_pid          = ns.exec("/scripts/util/hack_v3.js"  , server_to_use, {threads: batch_info.batch_hack.threads       ,temporary: true}, arg_flags.target, batch_info.batch_hack.addMsec)
+        if (batch_info.do_hacks) {
+          hack_pid          = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/hack_v3.js"  , server_to_use, {threads: batch_info.batch_hack.threads       ,temporary: true}, arg_flags.target, batch_info.batch_hack.addMsec)
         }
-        let weaken_hack_pid = ns.exec("/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_hack.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_hack.addMsec)
-        let grow_pid        = ns.exec("/scripts/util/grow_v3.js"  , server_to_use, {threads: batch_info.batch_grow.threads       ,temporary: true}, arg_flags.target, batch_info.batch_grow.addMsec)
-        let weaken_grow_pid = ns.exec("/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_grow.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_grow.addMsec)
+        let weaken_hack_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_hack.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_hack.addMsec)
+        let grow_pid        = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/grow_v3.js"  , server_to_use, {threads: batch_info.batch_grow.threads       ,temporary: true}, arg_flags.target, batch_info.batch_grow.addMsec)
+        let weaken_grow_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js", server_to_use, {threads: batch_info.batch_weaken_grow.threads,temporary: true}, arg_flags.target, batch_info.batch_weaken_grow.addMsec)
         post_exec = performance.now()
 
         if ((
               hack_pid      === 0
-          &&  batch_info.batch_hack.do_hacks)
+          &&  batch_info.do_hacks)
         ||  weaken_hack_pid === 0
         ||  grow_pid        === 0
         ||  weaken_grow_pid === 0
@@ -304,8 +422,8 @@ export async function main(ns) {
               !UPDATE_HANDLER.tryWrite(
                 JSON.stringify({
                   "action" : "death_react"
-                ,"death_react": {
-                    "pids_to_kill" : pid_array
+                 ,"death_react": {
+                    "pids_to_kill" : pid_to_kill
                   }
                 })
               )
@@ -324,6 +442,9 @@ export async function main(ns) {
           batch_tracker.push(new_batch)
         }
       }
+    }
+    if (performance.now() > (prior_ui_update_time + (1000/60))) {
+      update_TUI(ns, PROCESS_INFO)
     }
   }
 }

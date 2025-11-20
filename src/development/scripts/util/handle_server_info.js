@@ -87,7 +87,7 @@ export async function main(ns) {
     SERVER_INFO_HANDLER.clear()
   }
 
-  init()
+  init(ns)
 
   populate_all_server_stats(ns, SERVER_INFO_HANDLER)
 
@@ -110,6 +110,7 @@ export async function main(ns) {
       }
     }
 
+    //ns.tprint("Handle Info: " + JSON.stringify(update))
     switch (update.action) {
       case "update_info":
         update_server_stats(ns, update.target, SERVER_INFO_HANDLER)

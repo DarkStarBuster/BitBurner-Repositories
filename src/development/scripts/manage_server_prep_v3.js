@@ -1,6 +1,32 @@
-import { PORT_IDS } from "/src/development/scripts/util/constant_utilities"
+import { IN_DEV, PORT_IDS } from "/src/development/scripts/util/constant_utilities"
 import { release_ram, request_ram } from "/src/development/scripts/util/ram_management"
 import { round_ram_cost } from "/src/development/scripts/util/rounding"
+import { append_to_file, delete_file, rename_file } from "/src/development/scripts/util/file_management"
+
+const LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/manage_server_prep_curr"
+const PRIOR_LOG_FILENAME = (IN_DEV ? "development/" : "") + "logs/manage_server_prep_prior"
+const FILE_EXTENSION = ".txt"
+
+/**
+ * @param {import("@ns").NS} ns 
+ */
+function init_file_log(ns, target){
+  if (ns.fileExists(PRIOR_LOG_FILENAME + target + FILE_EXTENSION)) {
+    delete_file(ns, PRIOR_LOG_FILENAME + target + FILE_EXTENSION)
+  }
+  if (ns.fileExists(LOG_FILENAME + target + FILE_EXTENSION)) {
+    rename_file(ns, LOG_FILENAME + target + FILE_EXTENSION, PRIOR_LOG_FILENAME + target + FILE_EXTENSION)
+  }
+}
+
+/**
+ * @param {import("@ns").NS} ns 
+ * @param {string} message 
+ */
+function log(ns, target, message) {
+  append_to_file(ns, LOG_FILENAME + target + FILE_EXTENSION, message + "\n")
+}
+
 
 /** @param {import("@ns").NS} ns */
 export async function main(ns) {
@@ -16,6 +42,7 @@ export async function main(ns) {
   ns.enableLog("exec")
 
   ns.ui.setTailTitle("Manage Server Preparation V3.0 - Target: " + arg_flags.target + " - PID: " + our_pid)
+  init_file_log(ns, arg_flags.target)
 
   if (arg_flags.target == "") {
     ns.tprint("No Target Server specified for manage_server.js")
@@ -40,10 +67,13 @@ export async function main(ns) {
   mock_server.sshPortOpen = true
 
   let started_hack_batching = false
-  let server_info = JSON.parse(SERVER_INFO_HANDLER.peek()[arg_flags.target])
+  let server_info = JSON.parse(SERVER_INFO_HANDLER.peek())[arg_flags.target]
 
   while(!started_hack_batching) {
-    server_info = JSON.parse(SERVER_INFO_HANDLER.peek()[arg_flags.target])
+    log(ns, arg_flags.target, "Start Loop")
+    await ns.sleep(4)
+  
+    server_info = JSON.parse(SERVER_INFO_HANDLER.peek())[arg_flags.target]
     mock_server.hackDifficulty       = ns.getServerSecurityLevel(arg_flags.target)
     mock_server.maxRam               = server_info.max_ram
     mock_server.minDifficulty        = server_info.min_diff
@@ -55,6 +85,7 @@ export async function main(ns) {
 
     let diff = mock_server.hackDifficulty - server_info.min_diff
     if (diff > 0) {
+      log(ns, arg_flags.target, "diff > 0")
       // Prep weaken executions
       let num_threads = Math.ceil((diff) / 0.05)
       
@@ -87,6 +118,7 @@ export async function main(ns) {
 
       let attempted_single_thread = false
       while (threads_remaining > 0) {
+        log(ns, arg_flags.target, "threads remaining > 0: " + threads_remaining)
         // If we were unable to launch all threads neeeded but we have running threads ...
         if (
             attempted_single_thread
@@ -108,7 +140,7 @@ export async function main(ns) {
         let response = await request_ram(ns, ram_needed)
         if (response.result === "OK") {
           // And use the RAM in the new batch
-          let weaken_pid = ns.exec("/scripts/util/weaken_v3.js", response.server, {threads: threads_attempting, temporary: true}, arg_flags.target, 0)
+          let weaken_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js", response.server, {threads: threads_attempting, temporary: true}, arg_flags.target, 0)
           if (!(weaken_pid === 0)) {
             threads_launched += threads_attempting
             threads_remaining -= threads_attempting
@@ -128,6 +160,7 @@ export async function main(ns) {
       }
       let all_released = false
       while(!all_released) {
+        log(ns, arg_flags.target, "waiting for all to be released")
         if (weaken_scripts.length > 0) {
           // Weaken Scripts not finished releasing
           let script_info = weaken_scripts.shift()
@@ -143,6 +176,7 @@ export async function main(ns) {
       }
     }
     else if (mock_server.moneyMax > mock_server.moneyAvailable) {
+      log(ns, arg_flags.target, "moneyMax > moneyAvailable")
       // Prep grow executions
       let p = ns.getPlayer()
       let grow_threads = ns.formulas.hacking.growThreads(mock_server, p, mock_server.moneyMax, 1)
@@ -185,6 +219,7 @@ export async function main(ns) {
 
       let attempted_single_thread = false
       while (threads_remaining > 0) {
+        log(ns, arg_flags.target, "threads remaining > 0: " + threads_remaining)
         weaken_server = undefined
         grow_server   = undefined
         while (
@@ -256,8 +291,8 @@ export async function main(ns) {
         &&  !(weaken_server === undefined)
         &&  !(grow_server   === undefined)
         ) {
-          let grow_pid   = ns.exec("/scripts/util/grow_v3.js"  , server_to_use, {threads: threads_attempting, temporary: true}, arg_flags.target, grow_delay)
-          let weaken_pid = ns.exec("/scripts/util/weaken_v3.js", server_to_use, {threads: weaken_threads    , temporary: true}, arg_flags.target, weaken_delay)
+          let grow_pid   = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/grow_v3.js"  , grow_server  , {threads: threads_attempting, temporary: true}, arg_flags.target, grow_delay)
+          let weaken_pid = ns.exec((IN_DEV ? "/development" : "") + "/scripts/util/weaken_v3.js", weaken_server, {threads: weaken_threads    , temporary: true}, arg_flags.target, weaken_delay)
           
           if (
               grow_pid   === 0
@@ -272,7 +307,7 @@ export async function main(ns) {
                   JSON.stringify({
                     "action" : "death_react"
                    ,"death_react": {
-                      "pids_to_kill" : pid_array
+                      "pids_to_kill" : pid_to_kill
                     }
                   })
                 )
@@ -315,6 +350,7 @@ export async function main(ns) {
       }
     }
     else {
+      log(ns, arg_flags.target, "start hack batching")
       started_hack_batching = true
     }
   }
