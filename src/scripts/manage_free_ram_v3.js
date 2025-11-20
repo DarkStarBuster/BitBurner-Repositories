@@ -313,7 +313,7 @@ export async function main(ns) {
           break
         case "pserv-24":
           server_to_check = "pserv-23"
-          filename = "/scripts/util/share.js"
+          filename = "/scripts/util/dynamic/share.js"
           break
         default:
           if (server.includes("pserv")) {

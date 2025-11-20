@@ -263,6 +263,7 @@ async function check_root(ns, force_update) {
       if (!ns.fileExists("/scripts/util/dynamic/weaken_v3.js"     , server) || force_update) ns.scp("/scripts/util/dynamic/weaken_v3.js"     , server)
       if (!ns.fileExists("/scripts/util/dynamic/grow_v3.js"       , server) || force_update) ns.scp("/scripts/util/dynamic/grow_v3.js"       , server)
       if (!ns.fileExists("/scripts/util/dynamic/hack_v3.js"       , server) || force_update) ns.scp("/scripts/util/dynamic/hack_v3.js"       , server)
+      if (!ns.fileExists("/scripts/util/dynamic/share.js"         , server) || force_update) ns.scp("/scripts/util/dynamic/share.js"         , server)
       if (!ns.fileExists("/scripts/util/static/file_management.js", server) || force_update) ns.scp("/scripts/util/static/file_management.js", server)
         
 
@@ -270,7 +271,6 @@ async function check_root(ns, force_update) {
       if (!ns.fileExists("/scripts/util/rounding.js"          , server) || force_update) ns.scp("/scripts/util/rounding.js"          , server)
       if (!ns.fileExists("/scripts/util/port_management.js"   , server) || force_update) ns.scp("/scripts/util/port_management.js"   , server)
       if (!ns.fileExists("/scripts/util/ram_management.js"    , server) || force_update) ns.scp("/scripts/util/ram_management.js"    , server)
-      if (!ns.fileExists("/scripts/util/share.js"             , server) || force_update) ns.scp("/scripts/util/share.js"             , server)
       if (!ns.fileExists("/scripts/manage_server_hack_v3.js"  , server) || force_update) ns.scp("/scripts/manage_server_hack_v3.js"  , server)
       if (!ns.fileExists("/scripts/manage_server_prep_v3.js"  , server) || force_update) ns.scp("/scripts/manage_server_prep_v3.js"  , server)
       if (!ns.fileExists("/scripts/solve_cct.js"              , server) || force_update) ns.scp("/scripts/solve_cct.js"              , server)
