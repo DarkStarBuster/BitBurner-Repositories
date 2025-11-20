@@ -140,7 +140,7 @@ export async function main(ns) {
         let response = await request_ram(ns, ram_needed)
         if (response.result === "OK") {
           // And use the RAM in the new batch
-          let weaken_pid = ns.exec("/scripts/util/weaken_v3.js", response.server, {threads: threads_attempting, temporary: true}, arg_flags.target, 0)
+          let weaken_pid = ns.exec("/scripts/util/dynamic/weaken_v3.js", response.server, {threads: threads_attempting, temporary: true}, arg_flags.target, 0)
           if (!(weaken_pid === 0)) {
             threads_launched += threads_attempting
             threads_remaining -= threads_attempting
@@ -292,7 +292,7 @@ export async function main(ns) {
         &&  !(grow_server   === undefined)
         ) {
           let grow_pid   = ns.exec("/scripts/util/grow_v3.js"  , grow_server  , {threads: threads_attempting, temporary: true}, arg_flags.target, grow_delay)
-          let weaken_pid = ns.exec("/scripts/util/weaken_v3.js", weaken_server, {threads: weaken_threads    , temporary: true}, arg_flags.target, weaken_delay)
+          let weaken_pid = ns.exec("/scripts/util/dynamic/weaken_v3.js", weaken_server, {threads: weaken_threads    , temporary: true}, arg_flags.target, weaken_delay)
           
           if (
               grow_pid   === 0
