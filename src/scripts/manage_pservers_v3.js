@@ -126,7 +126,7 @@ export async function main(ns) {
       JSON.stringify({
         "action": "request_action",
         "request_action": {
-          "script_action": "freeram"
+          "script_action": "reboot_freeram"
         }
       })
     )
