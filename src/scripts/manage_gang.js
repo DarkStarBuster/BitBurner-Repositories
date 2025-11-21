@@ -254,7 +254,10 @@ function assign_member_tasks(ns, process_info, clash_tick) {
       ) {
         ns.gang.setMemberTask(name, "Train Combat")
       }
-      else if (ns.gang.getGangInformation().respect < 3e6){
+      else if (ns.gang.getGangInformation().wantedPenalty < 0.98){
+        ns.gang.setMemberTask(name, "Vigilante Justice")
+      }
+      else if (ns.gang.getGangInformation().respect < 2e6){
         ns.gang.setMemberTask(name, String.fromCharCode(84) + "errorism")
       }
       else if (process_info.gang_info.power < (process_info.max_gang_power * 2)) {
