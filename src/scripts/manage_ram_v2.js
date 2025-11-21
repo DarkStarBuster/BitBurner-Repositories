@@ -575,16 +575,16 @@ export async function main(ns) {
   let initialised = false
   let process_info = new ProcessInfo(ns)
 
-  ns.atExit(function() {
-    UPDATE_HANDLER.write(
-      JSON.stringify({
-        action : "request_action"
-       ,request_action: {
-          script_action : "reboot"
-        }
-      })
-    )
-  })
+  // ns.atExit(function() {
+  //   UPDATE_HANDLER.write(
+  //     JSON.stringify({
+  //       action : "request_action"
+  //      ,request_action: {
+  //         script_action : "reboot"
+  //       }
+  //     })
+  //   )
+  // })
 
   while (
         !RAM_PROVIDE_HANDLER.empty()
