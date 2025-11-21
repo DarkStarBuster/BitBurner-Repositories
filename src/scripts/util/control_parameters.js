@@ -30,14 +30,14 @@ function init(ns, server_info) {
     ram_exponent_of_new_servers: 1,
     mult_for_purchase_upg: 10 
   }
-  CONTROL_PARAMETERS.hacknet = { // Parameters for the Hacknet Manager
+  CONTROL_PARAMETERS.hacknet_mgr = { // Parameters for the Hacknet Manager
     calc_only  : false,    // When true, we just report the most 'optimal' purchase instead of actually purchasing it
     threshold  : 5e-6,     // Equivilant to 200000 seconds to payitself back
     cost_mod   : 1,        // We want to have cost_mod * cost available before we purchase the upgrade
     hash_target: "n00dles",// Hash Upgrades are going into this server.
     hash_time  : Infinity  // Time to produce all the hashes we need to buy all Hash Upgrades this server wants.
   }
-  CONTROL_PARAMETERS.gang = { // Parameters for the Gang Manager
+  CONTROL_PARAMETERS.gang_mgr = { // Parameters for the Gang Manager
     calc_only     : false,    // When true, we just report the most 'optimal' choices instead of implementing them
     open_ui       : false,    // Forces the process tail window open
     gang_faction  : ns.enums.FactionName.SlumSnakes,    // Faction we want to make the gang with
@@ -52,8 +52,8 @@ function init(ns, server_info) {
  * @param {string} target 
  */
 function update_hash_target(ns, target, time) {
-  CONTROL_PARAMETERS.hacknet.hash_target = target
-  CONTROL_PARAMETERS.hacknet.hash_time   = time
+  CONTROL_PARAMETERS.hacknet_mgr.hash_target = target
+  CONTROL_PARAMETERS.hacknet_mgr.hash_time   = time
 }
 
 /**

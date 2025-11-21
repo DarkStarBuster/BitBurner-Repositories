@@ -110,12 +110,21 @@ class ProcessInfo {
   server_scan_manager_pid = NaN;
   /** This is the process that maintains our 'view' of all the servers */
   server_info_handler_pid = NaN;
+  /** This is the process that deals with parcelling out RAM to other processes */
   ram_manager_pid = NaN;
+  /** This is the process that handles rooting new servers and putting scripts on them */
+  root_manager_pid = NaN;
+  /** This is the process that launches batching and batch-prep processes */
   hacking_manager_pid = NaN;
+  /** This is the process that deals with purchasing hacknet servers and hash upgrades */
   hacknet_manager_pid = NaN;
+  /** This is the process that deals with purchasing personal servers and their upgrades */
   pserver_manager_pid = NaN;
+  /** This is the process that checks for code contracts and spawns solvers */
   code_contract_manager_pid = NaN;
+  /** This is the process that uses up free RAM on home and our presonal servers to generate hacking exp or sharing the RAM */
   free_ram_manager_pid = NaN;
+  /** This is the process that autoamtically creates a gang is we can and then manages the gang */
   gang_manager_pid = NaN;
   last_ui_update = NaN;
 
@@ -415,6 +424,7 @@ async function start_ram_manager(ns, control_info, ram_provide_handler) {
 async function start_managers(ns, control_info) {
   log(ns, "Calculate amount of RAM we need for our managers.")
   let ram_needed = 0
+  let root_ram    = ns.getScriptRam("/scripts/manage_rooting.js")
   let batch_ram   = ns.getScriptRam("/scripts/manage_hacking_v4.js")
   let hacknet_ram = ns.getScriptRam("/scripts/manage_hacknet_v4.js")
   let pserv_ram   = ns.getScriptRam("/scripts/manage_pservers_v4.js")
@@ -422,21 +432,23 @@ async function start_managers(ns, control_info) {
   let free_ram    = ns.getScriptRam("/scripts/manage_free_ram_v3.js")
   let gang_ram    = ns.getScriptRam("/scripts/manage_gang.js")
 
+  ram_needed = round_ram_cost(ram_needed + root_ram)
+  log(ns, `Add Rooting Manager script RAM. Total: ${ram_needed}`)
   ram_needed = round_ram_cost(ram_needed + batch_ram)
-  log(ns, "Add Hack/Prep Manager Manager script RAM. Total: " + ram_needed)
+  log(ns, `Add Hack/Prep Manager Manager script RAM. Total: ${ram_needed}`)
   if (ns.getServerMaxRam("home") >= 64) {
     ram_needed = round_ram_cost(ram_needed, hacknet_ram)
-    log(ns, "Add Hacknet Manager script RAM. Total: " + ram_needed)
+    log(ns, `Add Hacknet Manager script RAM. Total: ${ram_needed}`)
     ram_needed = round_ram_cost(ram_needed, pserv_ram)
-    log(ns, "Add PServ Manager script RAM. Total: " + ram_needed)
+    log(ns, `Add PServ Manager script RAM. Total: ${ram_needed}`)
   }
   if (ns.getServerMaxRam("home") >= 128) {
-    ram_needed = round_ram_cost(ram_needed, ns.getScriptRam("/scripts/manage_codecontracts.js"))
-    log(ns, "Add Code Contract Manager script RAM. Total: " + ram_needed)
-    ram_needed = round_ram_cost(ram_needed, ns.getScriptRam("/scripts/manage_free_ram_v3.js"))
-    log(ns, "Add Free RAM Manager script RAM. Total: " + ram_needed)
-    ram_needed = round_ram_cost(ram_needed, ns.getScriptRam("/scripts/manage_gang.js"))
-    log(ns, "Add Gang Manager script RAM. Total: " + ram_needed)
+    ram_needed = round_ram_cost(ram_needed, cct_ram)
+    log(ns, `Add Code Contract Manager script RAM. Total: ${ram_needed}`)
+    ram_needed = round_ram_cost(ram_needed, free_ram)
+    log(ns, `Add Free RAM Manager script RAM. Total: ${ram_needed}`)
+    ram_needed = round_ram_cost(ram_needed, gang_ram)
+    log(ns, `Add Gang Manager script RAM. Total: ${ram_needed}`)
   }
 
   log(ns, "Request " + ram_needed + " RAM for our other Manager processes.")
@@ -460,7 +472,17 @@ async function start_managers(ns, control_info) {
     log(ns,"Server \"" + ram_response.server + "\" has had " + ram_response.amount + " additional RAM assigned to us.")
   }
 
-  let pid = ns.run("/scripts/manage_hacking_v4.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  let pid = ns.run("/scripts/manage_rooting.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  if (pid === 0) {
+    log(ns, "ERROR Failed to launch Rooting Manager after being allocated RAM.")
+    ns.tprint("ERROR Failed to launch Rooting Manager after being allocated RAM.")
+  }
+  else {
+    control_info.ram_state.servers[ram_response.server].add_process(ns, pid, root_ram, "/scripts/manage_rooting.js")
+    control_info.root_manager_pid = pid
+  }
+
+  pid = ns.run("/scripts/manage_hacking_v4.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
   if (pid === 0) {
     log(ns, "ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
     ns.tprint("ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
@@ -682,6 +704,14 @@ export async function main(ns) {
           pid = await reboot_process(ns, control_info, old_pid, filename)
           if (pid === 0) {ns.tprint(`ERROR: Failed to reboot ${filename} (${old_pid}).`)}
           else {control_info.server_info_handler_pid = pid}
+          break
+        case "reboot_root_manager":
+          // Reboot the Rooting Manager script
+          filename = "/scripts/manage_rooting.js"
+          old_pid = control_info.root_manager_pid
+          pid = await reboot_process(ns, control_info, old_pid, filename)
+          if (pid === 0) {ns.tprint(`ERROR: Faile to reboot ${filename} (${old_pid}).`)}
+          else {control_info.root_manager_pid = pid}
           break
         case "reboot_batch_manager":
           // Reboot the Hack/Prep Manager Manager script

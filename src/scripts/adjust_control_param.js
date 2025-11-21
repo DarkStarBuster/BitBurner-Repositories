@@ -38,19 +38,19 @@ export async function main(ns) {
   const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
 
   const arg_flags = ns.flags([
-    ["hacknet"  ,]
-   ,["gang"     ,]
-   ,["ui"       ,]
-   ,["calc_only",]
+    ["hacknet_mgr",]
+   ,["gang_mgr"   ,]
+   ,["ui"         ,]
+   ,["calc_only"  ,]
   ])  
 
-  if (arg_flags.gang) {
-    if (arg_flags.ui) {send_update(ns, "gang", "open_ui", arg_flags.ui, UPDATE_HANDLER)}
-    if (arg_flags.calc_only) {send_update(ns, "gang", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
+  if (arg_flags.gang_mgr) {
+    if (arg_flags.ui) {send_update(ns, "gang_mgr", "open_ui", arg_flags.ui, UPDATE_HANDLER)}
+    if (arg_flags.calc_only) {send_update(ns, "gang_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
   }
 
-  if (arg_flags.hacknet) {
-    if (arg_flags.ui) {send_update(ns, "hacknet", "open_ui", arg_flags.ui, UPDATE_HANDLER)}
-    if (arg_flags.calc_only) {send_update(ns, "hacknet", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
+  if (arg_flags.hacknet_mgr) {
+    if (arg_flags.ui) {send_update(ns, "hacknet_mgr", "open_ui", arg_flags.ui, UPDATE_HANDLER)}
+    if (arg_flags.calc_only) {send_update(ns, "hacknet_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
   }
 }

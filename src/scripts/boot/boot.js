@@ -1,6 +1,12 @@
 import { PORT_NAMES } from "/src/scripts/util/dynamic/manage_ports"
 import { kill_all_other_processes } from "/src/scripts/util/static/kill_all_other_processes"
 
+/** 
+ * The RAM Cost of this Script is 3.7GB and it needs to be that
+ * much as it cannot rely on any other scripts running to be able
+ * to perform it's purpose.
+ */
+
 /** @param {import("@ns").NS} ns */
 async function setup_port_ids(ns) {
   let ports = []

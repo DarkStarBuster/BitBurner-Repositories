@@ -1,4 +1,4 @@
-import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
+import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
 import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 
 class ProcessInfo {
@@ -135,11 +135,11 @@ function format_stats(ns, stats_array) {
 /**
  * @param {import("@ns").NS} ns
  */
-function decide_target_of_hashes(ns) {
+function decide_target_of_hashes(ns, filter) {
   /**
    * @type {string[]}
    */
-  let servers = scan_for_servers(ns,{"is_rooted":true,"has_money":true})
+  let servers = request_scan(ns, filter)
   // Find the most optimal hack target based on having already reduced the Minimum Security to 1
   servers.sort(
     // Negative Result means a before b
@@ -245,11 +245,11 @@ export async function main(ns) {
   let bitnode_mults = JSON.parse(BITNODE_MULTS_HANDLER.peek())
 
   process_info.last_ui_update = performance.now()
-  process_info.calc_only                  = control_params.hacknet.calc_only
-  process_info.threshold                  = control_params.hacknet.threshold
-  process_info.cost_mod                   = control_params.hacknet.cost_mod
-  process_info.current_hash_server_target = control_params.hacknet.hash_target
-  process_info.current_hash_server_time   = control_params.hacknet.hash_time
+  process_info.calc_only                  = control_params.hacknet_mgr.calc_only
+  process_info.threshold                  = control_params.hacknet_mgr.threshold
+  process_info.cost_mod                   = control_params.hacknet_mgr.cost_mod
+  process_info.current_hash_server_target = control_params.hacknet_mgr.hash_target
+  process_info.current_hash_server_time   = control_params.hacknet_mgr.hash_time
   process_info.player_mults               = ns.getPlayer().mults
   process_info.hacknet_node_money_mult    = bitnode_mults["HacknetNodeMoney"] * process_info.player_mults.hacknet_node_money
   process_info.hacking_script_money_mult  = bitnode_mults["ScriptHackMoney"] * process_info.player_mults.hacking_money
@@ -261,6 +261,10 @@ export async function main(ns) {
   process_info.best_choice_idx = 0
   process_info.gain_cost = 0
   process_info.gain_over_cost = 0
+
+  let filter = new ScanFilter()
+  filter.is_rooted = true
+  filter.has_money = true
   
   while (true) {
     ns.clearLog()
@@ -268,11 +272,11 @@ export async function main(ns) {
       await ns.sleep(4)
     }
     control_params = JSON.parse(CONTROL_PARAMETERS.peek())
-    process_info.calc_only = control_params.hacknet.calc_only
-    process_info.threshold = control_params.hacknet.threshold
-    process_info.cost_mod  = control_params.hacknet.cost_mod
-    process_info.current_hash_server_target = control_params.hacknet.hash_target
-    process_info.current_hash_server_time   = control_params.hacknet.hash_time
+    process_info.calc_only                  = control_params.hacknet_mgr.calc_only
+    process_info.threshold                  = control_params.hacknet_mgr.threshold
+    process_info.cost_mod                   = control_params.hacknet_mgr.cost_mod
+    process_info.current_hash_server_target = control_params.hacknet_mgr.hash_target
+    process_info.current_hash_server_time   = control_params.hacknet_mgr.hash_time
 
     process_info.stats_array = []
     /**
@@ -299,7 +303,7 @@ export async function main(ns) {
     let recent_script_income  = ns.getTotalScriptIncome()[0] // 0 is $/s of active scripts, 1 is $/s of scripts run since last installing Augs.
     let recent_hacknet_income = total_production
 
-    let hash_server_target = decide_target_of_hashes(ns)
+    let hash_server_target = decide_target_of_hashes(ns, filter)
     let server_obj = ns.getServer(hash_server_target)
     process_info.diff_to_1_upgs  = Math.ceil(Math.log(1/server_obj.minDifficulty) / Math.log(0.98))
     process_info.mon_to_e13_upgs = Math.ceil(Math.log(1e13/server_obj.moneyMax) / Math.log(1.02))

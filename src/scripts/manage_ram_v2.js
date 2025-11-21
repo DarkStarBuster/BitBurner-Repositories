@@ -148,7 +148,7 @@ function update_TUI(ns, process_info, force_update = false) {
   let height_for_title_bar = 33
   let height_per_line = 24
   let height_per_row = 24 * 1
-  y_size = height_for_title_bar + (height_per_row * rows) + (height_per_line * 2)
+  y_size = height_for_title_bar + (height_per_row * rows) + (height_per_line * 3)
   // if (rows > 1) {
   //   y_size = y_size + (height_per_line * (rows - 1))
   // }

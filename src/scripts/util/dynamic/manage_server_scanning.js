@@ -3,6 +3,8 @@ const DEPTH_LIMIT = 50
 
 export class ScanFilter {
   is_rooted       = undefined;
+  is_rootable     = undefined;
+  is_hackable     = undefined;
   has_money       = undefined;
   has_ram         = undefined;
   include_home    = undefined;
@@ -89,6 +91,13 @@ export async function request_scan(ns, filter = new ScanFilter()) {
 function scan_for_servers_recur(ns, server, filters = {}, servers = [], results = [], depth = 0, depth_limit = DEPTH_LIMIT) {
   let scan_results = ns.scan(server)
 
+  let port_opener_cnt = 0
+  if(ns.fileExists("BruteSSH.exe") ) {port_opener_cnt + 1}
+  if(ns.fileExists("FTPCrack.exe") ) {port_opener_cnt + 1}
+  if(ns.fileExists("relaySMTP.exe")) {port_opener_cnt + 1}
+  if(ns.fileExists("HTTPWorm.exe") ) {port_opener_cnt + 1}
+  if(ns.fileExists("SQLInject.exe")) {port_opener_cnt + 1}
+
   // Loop over the servers we can see.
   for (let scan_result of scan_results) {
     // Have we encountered this server before in our search?
@@ -105,6 +114,18 @@ function scan_for_servers_recur(ns, server, filters = {}, servers = [], results 
               continue
             }
             //ns.print("Failed due to root")
+            fail_filter_cnt += 1
+            break
+          case "is_rootable":
+            if ((ns.getServerNumPortsRequired(scan_result) <= port_opener_cnt) === filters[filter]) {
+              continue
+            }
+            fail_filter_cnt += 1
+            break
+          case "is_hackable":
+            if ((ns.getServerRequiredHackingLevel(scan_result) < ns.getHackingLevel()) === filters[filter]) {
+              continue
+            }
             fail_filter_cnt += 1
             break
           case "has_money":
@@ -180,12 +201,31 @@ export function scan_for_servers(ns, filters = {}) {
   let servers = ["home"]
   let results = []
 
+  let port_opener_cnt = 0
+  if(ns.fileExists("BruteSSH.exe") ) {port_opener_cnt + 1}
+  if(ns.fileExists("FTPCrack.exe") ) {port_opener_cnt + 1}
+  if(ns.fileExists("relaySMTP.exe")) {port_opener_cnt + 1}
+  if(ns.fileExists("HTTPWorm.exe") ) {port_opener_cnt + 1}
+  if(ns.fileExists("SQLInject.exe")) {port_opener_cnt + 1}
+
   // Do we want to include "home" in the result set?
   let fail_filter_cnt = 0
   for (let filter in filters) {
     switch (filter) {
       case "is_rooted":
         if (ns.hasRootAccess("home") === filters[filter]) {
+          continue
+        }
+        fail_filter_cnt += 1
+        break
+      case "is_rootable":
+        if ((ns.getServerNumPortsRequired("home") <= port_opener_cnt) === filters[filter]) {
+          continue
+        }
+        fail_filter_cnt += 1
+        break
+      case "is_hackable":
+        if ((ns.getServerRequiredHackingLevel("home") < ns.getHackingLevel()) === filters[filter]) {
           continue
         }
         fail_filter_cnt += 1
@@ -242,15 +282,17 @@ export async function main(ns) {
      ,payload: {}
     })
   )) {
-    await ns.sleep(4)
+    await ns.sleep(200)
   }
 
   while (true) {
+    ns.print(`Awaiting Update to Act On`)
     while (SCAN_REQUEST_HANDLER.empty()) {
       await ns.sleep(200) // Check the PORT every 0.2 seconds
     }
 
     let request = JSON.parse(SCAN_REQUEST_HANDLER.read())
+    ns.print(`Request recieved: ${JSON.stringify(request)}`)
 
     /**
      *  request = {
@@ -263,6 +305,7 @@ export async function main(ns) {
      */
     
     let result = scan_for_servers(ns, request.payload.filters)
+    ns.print(`Result: ${result}`)
 
     let response = {
       action : "scan_response"
@@ -277,5 +320,6 @@ export async function main(ns) {
     )) {
       await ns.sleep(4) // Try to write our response to the port every 0.004 seconds.
     }
+    ns.print(`Response sent`)
   }
 }

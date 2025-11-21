@@ -1,5 +1,4 @@
-import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
-
+import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
 import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 
 
@@ -284,10 +283,16 @@ export async function main(ns) {
     }
   }
 
+  let filter = new ScanFilter()
+  filter.is_rooted = true
+  filter.has_ram = true
+  filter.include_pserv = true
+  filter.include_hacknet = false
   while(true) {
     let control_params = JSON.parse(CONTROL_PARAMETERS.peek())
     let server_info    = JSON.parse(SERVER_INFO_HANDLER.peek())
-    let all_servers = scan_for_servers(ns,{"is_rooted":true,"has_ram":true,"include_pserv":true,"include_hacknet":false})
+
+    let all_servers = request_scan(ns, filter)
     //all_servers = ["home"]
     //ns.print(all_servers)
     for (let server of all_servers){

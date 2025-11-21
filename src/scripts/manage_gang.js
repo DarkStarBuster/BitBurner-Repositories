@@ -64,11 +64,11 @@ class ProcessInfo {
    * @param {Object}
    */
   constructor(ns, control_params) {
-    this.gang_faction = control_params.gang.gang_faction
-    this.check_faction = control_params.gang.check_faction
-    this.calc_only = control_params.gang.calc_only
-    this.purchase_perc = control_params.gang.purchase_perc
-    this.ascension_mult = control_params.gang.ascension_mult
+    this.gang_faction = control_params.gang_mgr.gang_faction
+    this.check_faction = control_params.gang_mgr.check_faction
+    this.calc_only = control_params.gang_mgr.calc_only
+    this.purchase_perc = control_params.gang_mgr.purchase_perc
+    this.ascension_mult = control_params.gang_mgr.ascension_mult
     this.in_gang = ns.gang.inGang()
     this.most_recent_action = "Initialisation"
   } 
@@ -342,11 +342,11 @@ export async function main(ns) {
     if (!CONTROL_PARAM_HANDLER.empty()) {
       control_params = JSON.parse(CONTROL_PARAM_HANDLER.peek())
     }
-    process_info.check_faction  = control_params.gang.check_faction
-    process_info.calc_only      = control_params.gang.calc_only
-    process_info.purchase_perc  = control_params.gang.purchase_perc
-    process_info.ascension_mult = control_params.gang.ascension_mult
-    process_info.open_ui        = control_params.gang.open_ui
+    process_info.check_faction  = control_params.gang_mgr.check_faction
+    process_info.calc_only      = control_params.gang_mgr.calc_only
+    process_info.purchase_perc  = control_params.gang_mgr.purchase_perc
+    process_info.ascension_mult = control_params.gang_mgr.ascension_mult
+    process_info.open_ui        = control_params.gang_mgr.open_ui
     // Are we in a clash tick?
     let power_check = ns.gang.getOtherGangInformation()[process_info.check_faction].power
     let clash_tick = false

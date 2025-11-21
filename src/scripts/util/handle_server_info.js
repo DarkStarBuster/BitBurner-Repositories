@@ -1,5 +1,5 @@
 import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
-import { scan_for_servers } from "./static/scan_for_servers"
+import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
 
 /**
  * ALL_SERVER_STATS is an object that will hold static or binary information about all servers.
@@ -68,7 +68,8 @@ function update_server_stats(ns, server, handler = undefined, defer_write = fals
  * @param {import("@ns").NetscriptPort} handler - Handler that will handle the port writing
  */
 function populate_all_server_stats(ns, handler) {
-  let all_servers = scan_for_servers(ns,{})
+  let filter = new ScanFilter()
+  let all_servers = request_scan(ns, filter)
 
   for (let server of all_servers) {
     update_server_stats(ns, server, undefined, true)

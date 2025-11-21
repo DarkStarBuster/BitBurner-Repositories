@@ -1,5 +1,5 @@
-import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
 
 // Find Largest Prime Factor
 // Subarray with Maximum Sum
@@ -65,7 +65,8 @@ export async function main(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
 
-  let servers = scan_for_servers(ns)
+  let filter = new ScanFilter()
+  let servers = request_scan(ns, filter)
   
   // Only look for contracts on the home server while testing
   if (TESTING) {

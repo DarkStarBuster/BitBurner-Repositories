@@ -1,10 +1,13 @@
-import { scan_for_servers } from "./scan_for_servers"
+import { ScanFilter, scan_for_servers } from "/src/scripts/util/dynamic/manage_server_scanning"
 
 /**
  * @param {import("@ns").NS} ns
  */
 export function kill_all_other_processes(ns) {
-  let rooted_servers = scan_for_servers(ns,{"is_rooted":true,"include_home":true})
+  let filter = new ScanFilter()
+  filter.is_rooted = true
+  filter.include_home = true
+  let rooted_servers = scan_for_servers(ns, filter)
   let cnt = 0
 
   ns.tprint(`INFO: Killing all other processes.`)

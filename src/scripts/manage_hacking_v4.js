@@ -1,5 +1,4 @@
 import { append_to_file, delete_file, rename_file } from "/src/scripts/util/static/file_management"
-import { scan_for_servers } from "/src/scripts/util/static/scan_for_servers"
 
 import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
@@ -181,110 +180,6 @@ async function kill_child(ns, childs_target) {
   return Promise.resolve()
 }
 
-/** 
- * @param {import("@ns").NS} ns
- * @param {boolean} force_update
- */
-async function check_root(ns, force_update) {
-  const SERVER_INFO_HANDLER   = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)
-  const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
-
-  let hack_dictionary = {
-    "ssh" : ns.fileExists("BruteSSH.exe"),
-    "ftp" : ns.fileExists("FTPCrack.exe"),
-    "smtp": ns.fileExists("relaySMTP.exe"),
-    "http": ns.fileExists("HTTPWorm.exe"),
-    "sql" : ns.fileExists("SQLInject.exe"),
-  }
-
-  let all_servers = JSON.parse(SERVER_INFO_HANDLER.peek())
-
-  for (let server in all_servers) {
-    if (server.includes("pserv")) {
-      log(ns, "We do update pservs")
-    }
-    // Root Unrooted Servers
-    if  (
-          (     all_servers[server].hack_lvl_req <= ns.getHackingLevel()
-            ||  all_servers[server].hack_lvl_req === undefined)
-      &&  !all_servers[server].is_rooted
-    ) {
-      //Open Ports
-      let ports_opened = 0
-      for (var hack_type in hack_dictionary){
-        if(hack_dictionary[hack_type]){
-          ports_opened += 1
-          switch (hack_type){
-            case "ssh":
-              ns.brutessh(server)
-              break
-            case "ftp":
-              ns.ftpcrack(server)
-              break
-            case "smtp":
-              ns.relaysmtp(server)
-              break
-            case "http":
-              ns.httpworm(server)
-              break
-            case "sql":
-              ns.sqlinject(server)
-              break
-          }
-        }
-      }
-      // Attempt Root
-      let newly_rooted = false
-      if (
-            all_servers[server].num_ports_req <= ports_opened
-        &&  !all_servers[server].is_rooted
-      ) {
-        ns.nuke(server)
-        newly_rooted = true
-        all_servers[server].is_rooted = true
-      }
-      // Notify of Successful Root
-      if (newly_rooted) {
-        ns.toast(`Successfully Rooted ${server}`, "success", 5000)
-      }
-      // Provoke update of Server Info PORT
-      let update = {
-        action: "update_info"
-        ,target: server
-      }      
-      while(!UPDATE_HANDLER.tryWrite(JSON.stringify(update))) {
-        await ns.sleep(4)
-      }
-    }
-    // Transfer files to rooted severs
-    if (all_servers[server].is_rooted) {
-
-      if (!ns.fileExists("/scripts/util/dynamic/grow_v3.js"        , server) || force_update) ns.scp("/scripts/util/dynamic/grow_v3.js"        , server)
-      if (!ns.fileExists("/scripts/util/dynamic/hack_v3.js"        , server) || force_update) ns.scp("/scripts/util/dynamic/hack_v3.js"        , server)
-      if (!ns.fileExists("/scripts/util/dynamic/manage_ports.js"   , server) || force_update) ns.scp("/scritps/util/dynamic/manage_ports.js"   , server)
-      if (!ns.fileExists("/scripts/util/dynamic/pid_provider.js"   , server) || force_update) ns.scp("/scripts/util/dynamic/pid_provider.js"   , server)
-      if (!ns.fileExists("/scripts/util/dynamic/share.js"          , server) || force_update) ns.scp("/scripts/util/dynamic/share.js"          , server)
-      if (!ns.fileExists("/scripts/util/dynamic/weaken_for_exp.js" , server) || force_update) ns.scp("/scripts/util/dynamic/weaken_for_exp.js" , server)
-      if (!ns.fileExists("/scripts/util/dynamic/weaken_v3.js"      , server) || force_update) ns.scp("/scripts/util/dynamic/weaken_v3.js"      , server)
-
-      if (!ns.fileExists("/scripts/util/static/file_management.js" , server) || force_update) ns.scp("/scripts/util/static/file_management.js" , server)
-      if (!ns.fileExists("/scripts/util/static/scan_for_servers.js", server) || force_update) ns.scp("/scritps/util/static/scan_for_servers.js", server)
-        
-
-      if (!ns.fileExists("/scripts/util/constant_utilities.js", server) || force_update) ns.scp("/scripts/util/constant_utilities.js", server)
-      if (!ns.fileExists("/scripts/util/rounding.js"          , server) || force_update) ns.scp("/scripts/util/rounding.js"          , server)
-      if (!ns.fileExists("/scripts/util/port_management.js"   , server) || force_update) ns.scp("/scripts/util/port_management.js"   , server)
-      if (!ns.fileExists("/scripts/util/ram_management.js"    , server) || force_update) ns.scp("/scripts/util/ram_management.js"    , server)
-      if (!ns.fileExists("/scripts/manage_server_hack_v3.js"  , server) || force_update) ns.scp("/scripts/manage_server_hack_v3.js"  , server)
-      if (!ns.fileExists("/scripts/manage_server_prep_v3.js"  , server) || force_update) ns.scp("/scripts/manage_server_prep_v3.js"  , server)
-      if (!ns.fileExists("/scripts/solve_cct.js"              , server) || force_update) ns.scp("/scripts/solve_cct.js"              , server)
-
-    }
-  }
-  log(ns, "Finished Rooting New Servers")
-  return Promise.resolve()
-}
-
 /**
  * @param {import("@ns").NS} ns
  */
@@ -417,18 +312,18 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     }
   }
 
-  if (!(managed_servers.includes(control_params.hacknet.hash_target) || preping_servers.includes(control_params.hacknet.hash_target))) {
+  if (!(managed_servers.includes(control_params.hacknet_mgr.hash_target) || preping_servers.includes(control_params.hacknet_mgr.hash_target))) {
     for (let server of preping_servers) {
       log(ns, `Killing preper for ${server} as we need space to prep the hash target`)
       await kill_child(ns, server)
       log(ns, `Server prepper killed`)
     }
     servers_to_prep = []
-    servers_to_prep.push(control_params.hacknet.hash_target)
+    servers_to_prep.push(control_params.hacknet_mgr.hash_target)
   }
 
   // // This is not working when the hash target is being hacked currently
-  // if (!preping_servers.includes(control_params.hacknet.hash_target) && !managed_servers.includes(control_params.hacknet.hash_target)) {
+  // if (!preping_servers.includes(control_params.hacknet_mgr.hash_target) && !managed_servers.includes(control_params.hacknet_mgr.hash_target)) {
   //   for (let server of preping_servers) {
   //     log(ns, "Killing preper for " + server + " as we need space to prep the hash target")
   //     await kill_child(ns, server)
@@ -444,7 +339,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     &&  !preping_servers.includes(server)
     ) {
       log(ns, "Launching prepper for " + server + ".")
-      ns.print("Server " + server + " maxMoney: " + ns.getServerMaxMoney(server) + ", availableMoney: " + ns.getServerMoneyAvailable(server))
+      //ns.print("Server " + server + " maxMoney: " + ns.getServerMaxMoney(server) + ", availableMoney: " + ns.getServerMoneyAvailable(server))
       successful = await launch_child(ns, "/scripts/manage_server_prep_v3.js", server)
       if (!successful) {
         log(ns, "ERROR Failed to launch prepper for " + server + ".")
@@ -500,26 +395,6 @@ export async function main(ns) {
 
     if (loop_count >= 120) {
       loop_count = 0
-    }
-
-    // Every one hundred and twenty loops (offset by sixty loops)
-    let force_update = false
-    if (
-        ((loop_count + 60) % 120) == 0
-    || !initialised
-    ) {
-      force_update = true
-    }
-
-    // Every twelve loops
-    if (
-        (loop_count % 12) == 0
-    || !initialised
-    ) {
-      // Root New Servers
-      log(ns, "Root New Servers")
-      await check_root(ns, force_update)
-      initialised = true
     }
 
     // Every twelve loops (offset by six loops)
