@@ -1,5 +1,6 @@
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
+import { ExecRequestPayload, request_exec } from "/src/scripts/util/dynamic/manage_exec"
 
 // Find Largest Prime Factor
 // Subarray with Maximum Sum
@@ -66,7 +67,7 @@ export async function main(ns) {
   ns.enableLog("exec")
 
   let filter = new ScanFilter()
-  let servers = request_scan(ns, filter)
+  let servers = await request_scan(ns, filter)
   
   // Only look for contracts on the home server while testing
   if (TESTING) {
@@ -115,8 +116,9 @@ export async function main(ns) {
               // + "Contract File   : " + file + "\n" 
               // + "Contract Type   : " + ns.codingcontract.getContractType(file,server) + "\n" 
               // + "Contract Data   : " + ns.codingcontract.getData(file,server) + "\n" 
-              // )
-              let solver_pid = ns.exec("/scripts/solve_cct.js", server_to_use, 1, ...["--contract_info",JSON.stringify(contract_info)])
+              // )              
+              let exec_request = new ExecRequestPayload(ns.pid, "/scripts/solve_cct.js", server_to_use, {threads:1, temporary:true}, ["--contract_info",JSON.stringify(contract_info)])
+              let solver_pid = await request_exec(ns, exec_request)
 
               if (!(solver_pid === 0)) {
                 while(ns.isRunning(solver_pid)) {
