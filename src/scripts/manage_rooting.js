@@ -1,6 +1,8 @@
 import { PORT_IDS } from "./util/dynamic/manage_ports"
 import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
 
+const DEBUG = false
+
 class ProcessInfo {
 
   constructor() {}
@@ -39,17 +41,20 @@ function transfer_files(ns, server) {
 
 /** @param {import("@ns").NS} ns */
 async function update_servers(ns) {
+  ns.print(`Update Rooted Servers`)
   let filter = new ScanFilter()
   filter.is_rooted = true
   let servers = await request_scan(ns, filter)
   for (let server of servers) {
     transfer_files(ns, server)
   }
+  ns.print(`Rooted Servers Updated`)
   return Promise.resolve()
 }
 
 /** @param {import("@ns").NS} ns */
 async function do_roots(ns, update_handler) {
+  ns.print(`Root New Servers`)
   let hack_dictionary = {
     ssh : ns.fileExists("BruteSSH.exe")
    ,ftp : ns.fileExists("FTPCrack.exe")
@@ -63,7 +68,9 @@ async function do_roots(ns, update_handler) {
   filter.is_rootable = true
   filter.is_hackable = true
 
-  let servers = await request_scan(ns, filter)
+  ns.print(`Await Server Scan Response`)
+  let servers = await request_scan(ns, filter, DEBUG)
+  ns.print(`Server Scan Response Received`)
   for (let server of servers) {
     // Open Ports
     for (let hack_type in hack_dictionary){
@@ -93,17 +100,18 @@ async function do_roots(ns, update_handler) {
     ns.toast(`Successfully Rooted ${server}`, "success", 5000)
     
     // Provoke update of Server Info PORT
-    let update = {
-      action: "update_info"
-      ,target: server
-    }      
-    while(!update_handler.tryWrite(JSON.stringify(update))) {
-      await ns.sleep(4)
-    }
+    // let update = {
+    //   action: "update_info"
+    //   ,target: server
+    // }      
+    // while(!update_handler.tryWrite(JSON.stringify(update))) {
+    //   await ns.sleep(4)
+    // }
 
     // Transfer all files to the new server
     transfer_files(ns, server)
   }
+  ns.print(`Rooting performed`)
 
   return Promise.resolve()
 }
