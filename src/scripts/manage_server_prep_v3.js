@@ -4,6 +4,7 @@ import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
+const DO_LOG = false
 const LOG_FILENAME = "logs/manage_server_prep_curr"
 const PRIOR_LOG_FILENAME = "logs/manage_server_prep_prior"
 const FILE_EXTENSION = ".txt"
@@ -25,7 +26,9 @@ function init_file_log(ns, target){
  * @param {string} message 
  */
 function log(ns, target, message) {
-  append_to_file(ns, LOG_FILENAME + target + FILE_EXTENSION, message + "\n")
+  if (DO_LOG) {
+    append_to_file(ns, LOG_FILENAME + target + FILE_EXTENSION, message + "\n")
+  }
 }
 
 
@@ -97,10 +100,12 @@ export async function main(ns) {
       let ram_needed = round_ram_cost(1.75 * threads_attempting)
 
       ns.atExit(function() {
+        ns.tprint(`atExit handler for prep script (${our_pid})`)
         let pid_array = []
         for (let info of weaken_scripts) {
           pid_array.push(info[0])
         }
+        ns.tprint(`atExit handler for prep script: Write UPDATE death react (${our_pid})`)
         UPDATE_HANDLER.write(
           JSON.stringify({
             "action" : "death_react"
@@ -109,6 +114,7 @@ export async function main(ns) {
             }
           })
         )
+        ns.tprint(`atExit handler for prep script: Write RAM Request death react (${our_pid})`)
         RAM_REQUEST_HANDLER.write(
           JSON.stringify({
             "action" : "death_react"

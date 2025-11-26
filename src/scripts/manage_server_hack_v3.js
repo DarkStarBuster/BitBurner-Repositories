@@ -216,10 +216,12 @@ export async function main(ns) {
   let post_exec = 0
 
   ns.atExit(function() {
+    ns.tprint(`atExit handler for hack script (${our_pid})`)
     let pid_array = []
     for (let batch of batch_tracker) {
       pid_array.push(batch[0],batch[3][0],batch[3][1],batch[3][2])
     }
+    ns.tprint(`atExit handler for hack script: Write UPDATE death react (${our_pid})`)
     UPDATE_HANDLER.write(
       JSON.stringify({
         "action" : "death_react"
@@ -228,6 +230,7 @@ export async function main(ns) {
         }
       })
     )
+    ns.tprint(`atExit handler for hack script: Write RAM Request death react (${our_pid})`)
     RAM_REQUEST_HANDLER.write(
       JSON.stringify({
         "action" : "death_react"
