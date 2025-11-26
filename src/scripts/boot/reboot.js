@@ -2,7 +2,7 @@ import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 import { kill_all_other_processes } from "/src/scripts/util/static/kill_all_other_processes"
 
 /** 
- * The RAM Cost of this Script is 3.7GB and it needs to be that
+ * The RAM Cost of this Script is 4.05GB and it needs to be that
  * much as it cannot rely on any other scripts running to be able
  * to perform it's purpose.
  */
@@ -15,15 +15,26 @@ export async function main(ns) {
     ["all"  ,false]
    ,["gang" ,false]
    ,["freeram",false]
+   ,["hacknet_mgr",false]
+   ,["root_mgr",false]
+   ,["server_scan",false]
   ])
 
   if (arg_flags.all) {
+    ns.tprint(`INFO: Rebooting...`)
     kill_all_other_processes(ns)
+    ns.tprint(`INFO: Clearing Ports`)
     for (let id in PORT_IDS) {
-      ns.getPortHandle(PORT_IDS[id]).clear()
+      if (!(isNaN(id))) {
+        ns.tprint(`INFO: Clearing Port ${id}.`)
+        ns.getPortHandle(PORT_IDS[id]).clear()
+      }
     }
+    ns.tprint(`INFO: Run Boot...`)
     let filename = "/scripts/boot/boot.js"
     ns.run(filename)
+    ns.ui.clearTerminal()
+    ns.exit()
   }
 
 
@@ -51,6 +62,54 @@ export async function main(ns) {
           "action": "request_action"
          ,"request_action": {
             "script_action": "reboot_freeram"
+          }
+        })
+      )
+    ) {
+      await ns.sleep(4)
+    }
+  }
+
+  if (arg_flags.hacknet_mgr) {
+    const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+    while(
+      !UPDATE_HANDLER.tryWrite(
+        JSON.stringify({
+          "action": "request_action"
+         ,"request_action": {
+            "script_action": "reboot_hacknet"
+          }
+        })
+      )
+    ) {
+      await ns.sleep(4)
+    }
+  }
+
+  if (arg_flags.root_mgr) {
+    const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+    while(
+      !UPDATE_HANDLER.tryWrite(
+        JSON.stringify({
+          "action": "request_action"
+         ,"request_action": {
+            "script_action": "reboot_root_manager"
+          }
+        })
+      )
+    ) {
+      await ns.sleep(4)
+    }
+  }
+
+  if (arg_flags.server_scan) {
+    const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+    while(
+      !UPDATE_HANDLER.tryWrite(
+        JSON.stringify({
+          "action": "request_action"
+         ,"request_action": {
+            "script_action": "reboot_server_scan"
           }
         })
       )

@@ -21,7 +21,7 @@ function init(ns, server_info) {
   CONTROL_PARAMETERS.hacker = {
     consider_early: 64, // Amount of RAM on home that we considers being below as being "early" in a run
     hack_batch_time_interval: 125, // Milliseconds between hack batches
-    total_hack_batch_limit: 50000 / 4, // <Total number of scripts we want running at any one time> / <4 as each hack batch runs 4 scripts>
+    total_hack_batch_limit: 40000 / 4, // <Total number of scripts we want running at any one time> / <4 as each hack batch runs 4 scripts>
     min_hack_threads_for_batch: 1 // Minimum number of Hack Threads to use when initially constructing a hack batch
   }
   CONTROL_PARAMETERS.pserv = { // Parameters for the Personal Server Manager
@@ -34,7 +34,7 @@ function init(ns, server_info) {
     calc_only  : false,    // When true, we just report the most 'optimal' purchase instead of actually purchasing it
     threshold  : 5e-6,     // Equivilant to 200000 seconds to payitself back
     cost_mod   : 1,        // We want to have cost_mod * cost available before we purchase the upgrade
-    hash_target: "n00dles",// Hash Upgrades are going into this server.
+    hash_target: undefined,// Hash Upgrades are going into this server.
     hash_time  : Infinity  // Time to produce all the hashes we need to buy all Hash Upgrades this server wants.
   }
   CONTROL_PARAMETERS.gang_mgr = { // Parameters for the Gang Manager

@@ -7,6 +7,8 @@ export const PORT_NAMES = {
  ,RAM_PROVIDE_HANDLER       : "RAM_PROVIDE_HANDLER"
  ,SCAN_REQUEST_HANDLER      : "SCAN_REQUEST_HANDLER"
  ,SCAN_PROVIDE_HANDLER      : "SCAN_PROVIDE_HANDLER"
+ ,EXEC_REQUEST_HANDLER      : "EXEC_REQUEST_HANDLER"
+ ,EXEC_PROVIDE_HANDLER      : "EXEC_PROVIDE_HANDLER"
 }
 
 export const PORT_IDS = {
@@ -18,6 +20,8 @@ export const PORT_IDS = {
  ,RAM_PROVIDE_HANDLER   : NaN
  ,SCAN_REQUEST_HANDLER  : NaN
  ,SCAN_PROVIDE_HANDLER  : NaN
+ ,EXEC_REQUEST_HANDLER  : NaN
+ ,EXEC_PROVIDE_HANDLER  : NaN
 }
 
 /** @param {import("@ns").NS} ns */
@@ -31,6 +35,7 @@ export async function main(ns) {
   for (let arg in arg_flags) {
     if (!(PORT_IDS[arg] === undefined) && isNaN(PORT_IDS[arg]) && !isNaN(arg_flags[arg])) {
       PORT_IDS[arg] = arg_flags[arg]
+      ns.getPortHandle(arg_flags[arg]).clear()
     }
   }
 }

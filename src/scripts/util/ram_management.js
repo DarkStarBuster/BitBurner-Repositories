@@ -39,7 +39,7 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
   while (awaiting_response) {
     //ns.print(LOG_COLOUR + "RAM: Wait until Provider is not empty" + DEF_COLOUR)
     while(RAM_PROVIDE_HANDLER.empty()) {
-      await RAM_PROVIDE_HANDLER.nextWrite()
+      await ns.sleep(4)
     }
     
     ram_response = JSON.parse(RAM_PROVIDE_HANDLER.peek())

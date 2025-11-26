@@ -20,6 +20,15 @@ import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_serve
  */
 const ALL_SERVER_STATS = {}
 
+class ProcessInfo {
+  last_action;
+  last_ui_update;
+
+  
+
+  constructor() {}
+}
+
 /**
  * Initialize the Server Info Handler.
  * 
@@ -67,9 +76,11 @@ function update_server_stats(ns, server, handler = undefined, defer_write = fals
  * @param {import("@ns").NS} ns - Netscript Environment
  * @param {import("@ns").NetscriptPort} handler - Handler that will handle the port writing
  */
-function populate_all_server_stats(ns, handler) {
+async function populate_all_server_stats(ns, handler) {
   let filter = new ScanFilter()
-  let all_servers = request_scan(ns, filter)
+  ns.print(`Request Scan of All Servers`)
+  let all_servers = await request_scan(ns, filter)
+  ns.print(`Scan Response Received`)
 
   for (let server of all_servers) {
     update_server_stats(ns, server, undefined, true)
@@ -90,7 +101,9 @@ export async function main(ns) {
 
   init(ns)
 
-  populate_all_server_stats(ns, SERVER_INFO_HANDLER)
+  ns.print(`Populating Initial Server Stats`)
+  await populate_all_server_stats(ns, SERVER_INFO_HANDLER)
+  ns.print(`Initial Server Stats Populated`)
 
   while(true) {
     ns.print("Awaiting Update we can act on.")
