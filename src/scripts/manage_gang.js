@@ -235,7 +235,7 @@ function update_member_info(ns, process_info) {
  * @param {ProcessInfo} process_info 
  */
 function assign_member_tasks(ns, process_info, clash_tick) {
-  if (clash_tick) {
+  if (clash_tick && process_info.gang_info.territory != 0) {
     for (let name in NAMES) {
       if (NAMES[name]) {
         ns.gang.setMemberTask(name, "Territory Warfare")
@@ -254,13 +254,22 @@ function assign_member_tasks(ns, process_info, clash_tick) {
       ) {
         ns.gang.setMemberTask(name, "Train Combat")
       }
-      else if (ns.gang.getGangInformation().wantedPenalty < 0.98){
-        ns.gang.setMemberTask(name, "Vigilante Justice")
-      }
-      else if (ns.gang.getGangInformation().respect < 2e6){
+      else if (
+          (   (process_info.gang_info.respect < 2e6)
+          &&  (process_info.gang_info.wantedPenalty >= 0.7))
+      ||  (   (process_info.gang_info.territory == 0)
+          &&  (process_info.gang_info.respect < 7e8)
+          &&  (process_info.gang_info.wantedPenalty >= 0.7))
+      ){
         ns.gang.setMemberTask(name, String.fromCharCode(84) + "errorism")
       }
-      else if (process_info.gang_info.power < (process_info.max_gang_power * 2)) {
+      else if (process_info.gang_info.wantedPenalty < 0.98){
+        ns.gang.setMemberTask(name, "Vigilante Justice")
+      }
+      else if (
+          (process_info.gang_info.power < (process_info.max_gang_power * 2))
+      &&  (process_info.gang_info.territory != 0) // Getting out from a 0 Territory situation is tedious
+      ) {
         ns.gang.setMemberTask(name, "Territory Warfare")
       }
       else {
@@ -337,6 +346,11 @@ export async function main(ns) {
     update_TUI(ns, process_info, true)
     await create_gang(ns, process_info)
   }
+
+  ns.atExit(function() {
+    // If / when the script exits, ensure we do not leave Territory Warfare on
+    ns.gang.setTerritoryWarfare(false)
+  })
 
   while (true) {
     if (!CONTROL_PARAM_HANDLER.empty()) {
