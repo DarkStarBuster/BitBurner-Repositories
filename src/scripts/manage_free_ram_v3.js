@@ -1,4 +1,5 @@
 import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
+import { ExecRequestPayload, request_exec } from "/src/scripts/util/dynamic/manage_exec"
 import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 
 
@@ -229,7 +230,8 @@ async function consume_ram(ns, p_servers, server_to_run, server_to_check, script
     ) {
       let have_ram = await request_ram(ns, server_to_run, threads * ns.getScriptRam(script_to_run), ram_request_handler, ram_provide_handler)
       if (have_ram) {
-        let process_id = ns.exec(script_to_run, server_to_run, threads, "--target", "foodnstuff", "--threads", threads)
+        let exec_request = new ExecRequestPayload(ns.pid, script_to_run, server_to_run, {threads:threads, temporary:true}, ["--target","foodnstuff","--threads",threads])
+        let process_id = await request_exec(ns, exec_request)
         p_servers[server_to_run].process_id = process_id
         p_servers[server_to_run].threads = threads
       }
@@ -241,7 +243,8 @@ async function consume_ram(ns, p_servers, server_to_run, server_to_check, script
       await release_ram(ns, server_to_run, ram_request_handler, ram_provide_handler)
       let have_ram = await request_ram(ns, server_to_run, threads * ns.getScriptRam(script_to_run), ram_request_handler, ram_provide_handler)
       if (have_ram) {
-        let process_id = ns.exec(script_to_run, server_to_run, threads, "--target", "foodnstuff", "--threads", threads)
+        let exec_request = new ExecRequestPayload(ns.pid, script_to_run, server_to_run, {threads:threads, temporary:true}, ["--target","foodnstuff","--threads",threads])
+        let process_id = await request_exec(ns, exec_request)
         p_servers[server_to_run].process_id = process_id
         p_servers[server_to_run].threads = threads
       }
@@ -292,7 +295,7 @@ export async function main(ns) {
     let control_params = JSON.parse(CONTROL_PARAMETERS.peek())
     let server_info    = JSON.parse(SERVER_INFO_HANDLER.peek())
 
-    let all_servers = request_scan(ns, filter)
+    let all_servers = await request_scan(ns, filter)
     //all_servers = ["home"]
     //ns.print(all_servers)
     for (let server of all_servers){
