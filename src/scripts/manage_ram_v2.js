@@ -559,6 +559,22 @@ function release_pids_ram(pid_to_release, process_info) {
 
 /**
  * @param {import("@ns").NS} ns
+ * @param {Object<string, ServerRAMInfo>} ram_state
+ */
+function audit_ram_state(ns, ram_state) {
+  for (let server in ram_state) {
+    for (let pid in ram_state[server].ram_slices) {
+      if (!ns.isRunning(parseInt(pid))) {
+        ns.tprint(`ERROR: RAM State contained dead process '${ram_state[server].ram_slices[pid].pid_filename}' (${ram_state[server].ram_slices[pid].pid}) ${ns.formatRam(ram_state[server].ram_slices[pid].slice_amount)}`)
+        ram_state[server].free_ram = round_ram_cost(ram_state[server].free_ram + ram_state[server].ram_slices[pid].slice_amount)
+        delete ram_state[server].ram_slices[pid]
+      }
+    }
+  }
+}
+
+/**
+ * @param {import("@ns").NS} ns
  */
 export async function main(ns) {
   const CONTROL_PARAMETERS    = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
@@ -629,6 +645,10 @@ export async function main(ns) {
         }
       }
     }
+
+    process_info.last_action = "Checking RAM State for Dead Processes"
+    //TODO: Actually write this function
+    audit_ram_state(ns, process_info.ram_state)
 
     process_info.last_action = "Reading RAM Request Port"
     update_TUI(ns, process_info, true)
