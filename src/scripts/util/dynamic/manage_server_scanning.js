@@ -23,7 +23,7 @@ export class ScanFilter {
   constructor() {}
 }
 
-class ServerState {
+export class ServerState {
   /** @type {string} */
   hostname
   /** @type {number} */
