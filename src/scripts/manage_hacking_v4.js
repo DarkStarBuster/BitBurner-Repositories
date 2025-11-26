@@ -1,9 +1,11 @@
 import { append_to_file, delete_file, rename_file } from "/src/scripts/util/static/file_management"
+import { ExecRequestPayload, request_exec } from "/src/scripts/util/dynamic/manage_exec"
 
 import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
+const DO_LOG = false
 const LOG_FILENAME = "logs/manage_hacking_curr.txt"
 const PRIOR_LOG_FILENAME = "logs/manage_hacking_prior.txt"
 
@@ -118,19 +120,31 @@ function child_is_running(ns, filename) {
  * @param {string} server_to_target - Server to target with the script given
  */
 async function launch_child(ns, filename, server_to_target) {
+  if (server_to_target === undefined) {
+    ns.tprint(`ERROR: Attempting to launch '${filename}' on undefined server`)
+    ns.exit()
+  }
+  if (!(typeof server_to_target === "string")) {
+    ns.tprint(`ERROR: Type of 'server_to_target': ${server_to_target} is ${typeof server_to_target}`)
+    ns.exit()
+  }
   let ram_needed = ns.getScriptRam(filename)
-  log(ns, "RAM required for " + filename + " targetting " + server_to_target +" is calculated as " + ram_needed)
+  //log(ns, "RAM required for " + filename + " targetting " + server_to_target +" is calculated as " + ram_needed)
 
   let request_response = await request_ram(ns, ram_needed)
   if (!(request_response.result === "OK")) {
-    log(ns, "Did not find free RAM to launch child process: " + filename + " targetting " + server_to_target)
+    //log(ns, "Did not find free RAM to launch child process: " + filename + " targetting " + server_to_target)
     return Promise.resolve(false)
   }
 
-  let script_args = [
-    "--target", server_to_target
-  ]
-  let pid = ns.exec(filename, request_response.server, {threads: 1, temporary: true},...script_args)
+  /** @type {import("@ns").ScriptArg[]} */
+  let script_args = ["--target", server_to_target]
+  //   "target", server_to_target
+  // ]
+
+  let exec_request = new ExecRequestPayload(ns.pid, filename, request_response.server, {threads:1, temporary:true}, script_args)
+  let pid = await request_exec(ns, exec_request)
+  
   if (!(pid === 0)) {
     add_child_process(ns, pid, filename, request_response.server, server_to_target)
     return Promise.resolve(true)
@@ -190,7 +204,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
   for (let server in RAM_INFO) {
     for (let pid in RAM_INFO[server].processes) {
       if (ns.isRunning(parseInt(pid))) {
-        log(ns, "Live PID: " + pid)
+        //log(ns, "Live PID: " + pid)
         switch (RAM_INFO[server].processes[pid].filename) {
           case "/scripts/manage_server_hack_v3.js":
             managed_servers.push(RAM_INFO[server].processes[pid].target)
@@ -201,9 +215,9 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
         }
       }
       else {
-        log(ns, "Killed PID " + pid + " as it is not running.")
+        //log(ns, "Killed PID " + pid + " as it is not running.")
         let response = await release_ram(ns, server, RAM_INFO[server].processes[pid].ram_cost)
-        log(ns, "RAM Release Response: " + response)
+        //log(ns, "RAM Release Response: " + response)
         if (!(response.result === "OK")) {
           ns.tprint("ERROR PID " + pid + " is dead, but we failed to release the RAM associated with it.")
         }
@@ -212,8 +226,8 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     }
   }
 
-  log(ns, managed_servers.length + " Managed Server processes found")
-  log(ns, preping_servers.length + " Prepare Server processes found")
+  // log(ns, managed_servers.length + " Managed Server processes found")
+  // log(ns, preping_servers.length + " Prepare Server processes found")
 
   let servers = Object.keys(server_info).filter(server => server_info[server].is_rooted && server_info[server].max_money > 0)
 
@@ -265,9 +279,9 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     ) {
       // We are not Managing this server AND it is not in a preped state.
       // Add to the list of servers to prep.
-      log(ns, `Server to prep ${server} as:`)
-      log(ns, `Sec Level of Server: ${ns.getServerSecurityLevel(server)} != ${server_info[server].min_diff}`)
-      log(ns, `Money Level of Server: ${ns.getServerMoneyAvailable(server)} != ${server_info[server].max_money}`)
+      // log(ns, `Server to prep ${server} as:`)
+      // log(ns, `Sec Level of Server: ${ns.getServerSecurityLevel(server)} != ${server_info[server].min_diff}`)
+      // log(ns, `Money Level of Server: ${ns.getServerMoneyAvailable(server)} != ${server_info[server].max_money}`)
       servers_to_prep.push(server)
       continue
     }
@@ -286,16 +300,16 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
   for (let server of hackable_servers){
     let batches_to_saturate_server = Math.max(Math.floor(ns.getWeakenTime(server) / control_params.hacker.hack_batch_time_interval), 1)
     if (hack_batch_cnt + batches_to_saturate_server < control_params.hacker.total_hack_batch_limit) {
-      log(ns, "Added " + server + " with " + batches_to_saturate_server + " to the list of servers we will hack")
+      // log(ns, "Added " + server + " with " + batches_to_saturate_server + " to the list of servers we will hack")
       hack_batch_cnt += batches_to_saturate_server
       servers_to_hack.push(server)
     }
   }
-  log(ns, "Total of " + hack_batch_cnt + " hack batches are expected to be spawned")
+  // log(ns, "Total of " + hack_batch_cnt + " hack batches are expected to be spawned")
 
   for (let server of managed_servers) {
     if (servers_to_hack.indexOf(server) === -1) {
-      log(ns, "Killing manager for " + server + " as we no longer want to hack it.")
+      // log(ns, "Killing manager for " + server + " as we no longer want to hack it.")
       await kill_child(ns, server)
     }
   }
@@ -304,22 +318,25 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     // Not managing currently, request new manager
     let successful = false
     if (managed_servers.indexOf(server) == -1) {
-      log(ns, "Launching manager for " + server + ".")
+      // log(ns, "Launching manager for " + server + ".")
       successful = await launch_child(ns, "/scripts/manage_server_hack_v3.js", server)
       if (!successful) {
-        log(ns, "Failed to launch manager for " + server + ".")
+        // log(ns, "Failed to launch manager for " + server + ".")
       }
     }
   }
 
-  if (!(managed_servers.includes(control_params.hacknet_mgr.hash_target) || preping_servers.includes(control_params.hacknet_mgr.hash_target))) {
-    for (let server of preping_servers) {
-      log(ns, `Killing preper for ${server} as we need space to prep the hash target`)
-      await kill_child(ns, server)
-      log(ns, `Server prepper killed`)
+  if (!(control_params.hacknet_mgr.hash_target === undefined)) {
+    if (!(managed_servers.includes(control_params.hacknet_mgr.hash_target) || preping_servers.includes(control_params.hacknet_mgr.hash_target))) {
+      for (let server of preping_servers) {
+        // log(ns, `Killing preper for ${server} as we need space to prep the hash target`)
+        await kill_child(ns, server)
+        // log(ns, `Server prepper killed`)
+      }
+      servers_to_prep = []
+      // log(ns, `Overrideing servers to prep to prep hash target ${control_params.hacknet_mgr.hash_target}`)
+      servers_to_prep.push(control_params.hacknet_mgr.hash_target)
     }
-    servers_to_prep = []
-    servers_to_prep.push(control_params.hacknet_mgr.hash_target)
   }
 
   // // This is not working when the hash target is being hacked currently
@@ -338,17 +355,17 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
         preping_servers.length < 10
     &&  !preping_servers.includes(server)
     ) {
-      log(ns, "Launching prepper for " + server + ".")
+      // log(ns, "Launching prepper for " + server + ".")
       //ns.print("Server " + server + " maxMoney: " + ns.getServerMaxMoney(server) + ", availableMoney: " + ns.getServerMoneyAvailable(server))
       successful = await launch_child(ns, "/scripts/manage_server_prep_v3.js", server)
       if (!successful) {
-        log(ns, "ERROR Failed to launch prepper for " + server + ".")
+        // log(ns, "ERROR Failed to launch prepper for " + server + ".")
       }
       break
     }
   }
 
-  log(ns, "Finished requesting new manager processes")
+  // log(ns, "Finished requesting new manager processes")
   return Promise.resolve()
 }
 
@@ -400,7 +417,7 @@ export async function main(ns) {
     // Every twelve loops (offset by six loops)
     if (((loop_count + 6) % 12) == 0) {
       // Create new instances of 'scripts/manage_server.js'
-      log(ns, "Request New Manage Server processes")
+      // log(ns, "Request New Manage Server processes")
       await check_manage(ns, control_params, bitnode_mults, server_info)
     }
 
