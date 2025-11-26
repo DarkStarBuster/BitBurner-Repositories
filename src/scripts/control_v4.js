@@ -1,5 +1,6 @@
 import { append_to_file, delete_file, rename_file } from "/src/scripts/util/static/file_management"
 import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { ExecRequestPayload, request_exec } from "/src/scripts/util/dynamic/manage_exec"
 
 import { COLOUR, colourize } from "/src/scripts/util/constant_utilities"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
@@ -7,6 +8,7 @@ import { round_ram_cost } from "/src/scripts/util/rounding"
 
 const LOG_COLOUR = colourize(COLOUR.MINT,9)
 const DEF_COLOUR = colourize(COLOUR.DEFAULT)
+const DO_LOG = false
 const LOG_FILENAME = "logs/control_servers_curr.txt"
 const PRIOR_LOG_FILENAME = "logs/control_servers_prior.txt"
 const X_SIZE = 425
@@ -104,6 +106,8 @@ class RamInfo {
 class ProcessInfo {
   /** This is this process */
   control_pid = NaN;
+  /** This is the process that handles executing new processes */
+  exec_manager_pid = NaN;
   /** This is the process that handles the Controls that determine script behaviours */
   control_parameters_pid = NaN;
   /** This is the process that handles finding servers */
@@ -204,7 +208,9 @@ function init_file_log(ns){
  * @param {string} message 
  */
 function log(ns, message) {
-  append_to_file(ns, LOG_FILENAME, message + "\n")
+  if (DO_LOG) {
+    append_to_file(ns, LOG_FILENAME, message + "\n")
+  }
 }
 
 /**
@@ -218,25 +224,16 @@ function update_TUI(ns, control_info, force_update) {
     return
   }
   control_info.last_ui_update = performance.now()
-  let y_size = 0
-  let height_for_title_bar = 33
-  let height_per_line = 24
-  y_size = height_for_title_bar + (height_per_line * 11)
-  let tail_properties = ns.self().tailProperties
-  if (!(tail_properties === null)) {
-    if (!(tail_properties.height === y_size) || !(tail_properties.width === X_SIZE)) {
-      ns.ui.resizeTail(X_SIZE, y_size)
-    }
-  }
 
-  ns.clearLog()
   let name_column_length = 30
   const GOOD_COLOUR = colourize(COLOUR.LGREEN)
   const BAD_COLOUR = colourize(COLOUR.RED)
 
   if (!ns.isRunning(control_info.control_pid)) control_info.control_pid = NaN
+  if (!ns.isRunning(control_info.exec_manager_pid)) control_info.exec_manager_pid = NaN
   if (!ns.isRunning(control_info.control_parameters_pid)) control_info.control_parameters_pid = NaN
   if (!ns.isRunning(control_info.server_scan_manager_pid)) control_info.server_scan_manager_pid = NaN
+  if (!ns.isRunning(control_info.root_manager_pid)) control_info.root_manager_pid = NaN
   if (!ns.isRunning(control_info.server_info_handler_pid)) control_info.server_info_handler_pid = NaN
   if (!ns.isRunning(control_info.ram_manager_pid)) control_info.ram_manager_pid = NaN
   if (!ns.isRunning(control_info.hacking_manager_pid)) control_info.hacking_manager_pid = NaN
@@ -246,17 +243,40 @@ function update_TUI(ns, control_info, force_update) {
   if (!ns.isRunning(control_info.free_ram_manager_pid)) control_info.free_ram_manager_pid = NaN
   if (!ns.isRunning(control_info.gang_manager_pid)) control_info.gang_manager_pid = NaN
 
-  ns.print("Control Process".padEnd(name_column_length)               + ": " + (isNaN(control_info.control_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Control Parameters Process".padEnd(name_column_length)    + ": " + (isNaN(control_info.control_parameters_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Server Scan Manager Process".padEnd(name_column_length)   + ": " + (isNaN(control_info.server_scan_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Server Info Handler Process".padEnd(name_column_length)   + ": " + (isNaN(control_info.server_info_handler_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("RAM Manager Process".padEnd(name_column_length)           + ": " + (isNaN(control_info.ram_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Hacking Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.hacking_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Hacknet Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.hacknet_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("PServer Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.pserver_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Code Contract Manager Process".padEnd(name_column_length) + ": " + (isNaN(control_info.code_contract_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Free RAM Manager Process".padEnd(name_column_length)      + ": " + (isNaN(control_info.free_ram_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
-  ns.print("Gang Manager Process".padEnd(name_column_length)          + ": " + (isNaN(control_info.gang_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  /** @type {string[]} */
+  let processes = []
+
+  processes.push("Control Process".padEnd(name_column_length)               + ": " + (isNaN(control_info.control_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Exec Manager Process".padEnd(name_column_length)          + ": " + (isNaN(control_info.exec_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Control Parameters Process".padEnd(name_column_length)    + ": " + (isNaN(control_info.control_parameters_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Server Scan Manager Process".padEnd(name_column_length)   + ": " + (isNaN(control_info.server_scan_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Rooting Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.root_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Server Info Handler Process".padEnd(name_column_length)   + ": " + (isNaN(control_info.server_info_handler_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("RAM Manager Process".padEnd(name_column_length)           + ": " + (isNaN(control_info.ram_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Hacking Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.hacking_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Hacknet Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.hacknet_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("PServer Manager Process".padEnd(name_column_length)       + ": " + (isNaN(control_info.pserver_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Code Contract Manager Process".padEnd(name_column_length) + ": " + (isNaN(control_info.code_contract_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Free RAM Manager Process".padEnd(name_column_length)      + ": " + (isNaN(control_info.free_ram_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+  processes.push("Gang Manager Process".padEnd(name_column_length)          + ": " + (isNaN(control_info.gang_manager_pid) ? BAD_COLOUR + "NOT RUNNING" : GOOD_COLOUR + "RUNNING") + DEF_COLOUR)
+
+  
+  ns.clearLog()
+  for (let string of processes) {
+    ns.print(string)
+  }
+
+  
+  let y_size = 0
+  let height_for_title_bar = 33
+  let height_per_line = 24
+  y_size = height_for_title_bar + (height_per_line * processes.length)
+  let tail_properties = ns.self().tailProperties
+  if (!(tail_properties === null)) {
+    if (!(tail_properties.height === y_size) || !(tail_properties.width === X_SIZE)) {
+      ns.ui.resizeTail(X_SIZE, y_size)
+    }
+  }
 }
 
 /**
@@ -265,7 +285,14 @@ function update_TUI(ns, control_info, force_update) {
  * @param {import("@ns").NetscriptPort} scan_provide_handler
  */
 async function start_server_scanner(ns, control_info, scan_provide_handler) {
-  let pid = ns.run("/scripts/util/dynamic/manage_server_scanning.js", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  let exec_payload = new ExecRequestPayload(
+    ns.pid,
+    "/scripts/util/dynamic/manage_server_scanning.js",
+    "home",
+    {threads:1,temporary:true},
+    ["--parent_pid", ns.pid]
+  )
+  let pid = await request_exec(ns, exec_payload)
   if (pid === 0) {
     ns.tprint("ERROR: Failed to launch Server Scan Manager.")
     ns.exit()
@@ -277,12 +304,16 @@ async function start_server_scanner(ns, control_info, scan_provide_handler) {
   }
 
   let init_response = JSON.parse(scan_provide_handler.peek())
-  if (init_response.action === "scan_init") {
+  if (
+        init_response.action === "scan_init"
+    &&  parseInt(init_response.payload.requester) === ns.pid
+  ) {
     scan_provide_handler.read()
   }
   else {
     ns.tprint(`ERROR: First message in Scan Provide Handler is not a 'scan_init' response.`)
     ns.tprint(`ERROR: Instead recieved: ${JSON.stringify(init_response)}`)
+    ns.exit()
   }
 }
 
@@ -293,7 +324,14 @@ async function start_server_scanner(ns, control_info, scan_provide_handler) {
  * @param {import("@ns").NetscriptPort} server_info_handler
  */
 async function populate_information_ports(ns, control_info, control_param_handler, bitnode_mults_handler, server_info_handler) {
-  let pid = ns.run("/scripts/util/bitnode_modifiers.js", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  let exec_payload = new ExecRequestPayload(
+    ns.pid,
+    "/scripts/util/bitnode_modifiers.js",
+    "home",
+    {threads:1,temporary:true},
+    ["--parent_pid", ns.pid]
+  )
+  let pid = await request_exec(ns, exec_payload)
   if (pid === 0) {
     ns.tprint("ERROR Failed to launch BitNode Multipliers script.")
     ns.exit()
@@ -304,18 +342,32 @@ async function populate_information_ports(ns, control_info, control_param_handle
   }
   control_info.bitnode_modifiers_run = true
 
-  let server_info_pid = ns.run("/scripts/util/handle_server_info.js", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
-  if (server_info_pid === 0) {
-    ns.tprint("ERROR Failed to launch Server Info script.")
-    ns.exit()
-  }
+  // exec_payload = new ExecRequestPayload(
+  //   ns.pid,
+  //   "/scripts/util/handle_server_info.js",
+  //   "home",
+  //   {threads:1,temporary:true},
+  //   ["--parent_pid", ns.pid]
+  // )
+  // let server_info_pid = await request_exec(ns, exec_payload)
+  // if (server_info_pid === 0) {
+  //   ns.tprint("ERROR Failed to launch Server Info script.")
+  //   ns.exit()
+  // }
 
-  while(server_info_handler.empty()) {
-    await ns.sleep(4)
-  }
-  control_info.server_info_handler_pid = server_info_pid
+  // while(server_info_handler.empty()) {
+  //   await ns.sleep(4)
+  // }
+  // control_info.server_info_handler_pid = server_info_pid
 
-  let control_pid = ns.run("/scripts/util/control_parameters.js", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  exec_payload = new ExecRequestPayload(
+    ns.pid,
+    "/scripts/util/control_parameters.js",
+    "home",
+    {threads:1,temporary:true},
+    ["--parent_pid", ns.pid]
+  )
+  let control_pid = await request_exec(ns, exec_payload)
   if (control_pid === 0) {
     ns.tprint("ERROR Failed to launch Control Parameters script.")
     ns.exit()
@@ -337,7 +389,14 @@ async function populate_information_ports(ns, control_info, control_param_handle
  * @param {import("@ns").NetscriptPort} ram_provide_handler - Port that returns RAM request outcomes
  */
 async function start_ram_manager(ns, control_info, ram_provide_handler) {
-  let ram_pid = ns.run("/scripts/manage_ram_v2.js", {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  let exec_payload = new ExecRequestPayload(
+    ns.pid,
+    "/scripts/manage_ram_v2.js",
+    "home",
+    {threads:1,temporary:true},
+    ["--parent_pid", ns.pid]
+  )
+  let ram_pid = await request_exec(ns, exec_payload)
 
   if(ram_pid === 0) {
     log(ns, "ERROR Failed to launch RAM Manager script.")
@@ -472,7 +531,14 @@ async function start_managers(ns, control_info) {
     log(ns,"Server \"" + ram_response.server + "\" has had " + ram_response.amount + " additional RAM assigned to us.")
   }
 
-  let pid = ns.run("/scripts/manage_rooting.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  let exec_payload = new ExecRequestPayload(
+    ns.pid,
+    "/scripts/manage_rooting.js",
+    "home",
+    {threads:1,temporary:true},
+    ["--parent_pid", ns.pid]
+  )
+  let pid = await request_exec(ns, exec_payload)
   if (pid === 0) {
     log(ns, "ERROR Failed to launch Rooting Manager after being allocated RAM.")
     ns.tprint("ERROR Failed to launch Rooting Manager after being allocated RAM.")
@@ -482,7 +548,14 @@ async function start_managers(ns, control_info) {
     control_info.root_manager_pid = pid
   }
 
-  pid = ns.run("/scripts/manage_hacking_v4.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+  exec_payload = new ExecRequestPayload(
+    ns.pid,
+    "/scripts/manage_hacking_v4.js",
+    "home",
+    {threads:1,temporary:true},
+    ["--parent_pid", ns.pid]
+  )
+  pid = await request_exec(ns, exec_payload)
   if (pid === 0) {
     log(ns, "ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
     ns.tprint("ERROR Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
@@ -493,7 +566,14 @@ async function start_managers(ns, control_info) {
   }
 
   if (ns.getServerMaxRam("home") >= 64) {
-    pid = ns.run("/scripts/manage_hacknet_v4.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+    exec_payload = new ExecRequestPayload(
+      ns.pid,
+      "/scripts/manage_hacknet_v4.js",
+      "home",
+      {threads:1,temporary:true},
+      ["--parent_pid", ns.pid]
+    )
+    pid = await request_exec(ns, exec_payload)
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
@@ -503,7 +583,14 @@ async function start_managers(ns, control_info) {
       control_info.hacknet_manager_pid = pid
     }
   
-    pid = ns.run("/scripts/manage_pservers_v3.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+    exec_payload = new ExecRequestPayload(
+      ns.pid,
+      "/scripts/manage_pservers_v3.js",
+      "home",
+      {threads:1,temporary:true},
+      ["--parent_pid", ns.pid]
+    )
+    pid = await request_exec(ns, exec_payload)
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Automatic Personal Server Manager after being allocated RAM.")
@@ -516,7 +603,14 @@ async function start_managers(ns, control_info) {
   }
 
   if (ns.getServerMaxRam("home") >= 128) {
-    pid = ns.run("/scripts/manage_codecontracts.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+    exec_payload = new ExecRequestPayload(
+      ns.pid,
+      "/scripts/manage_codecontracts.js",
+      "home",
+      {threads:1,temporary:true},
+      ["--parent_pid", ns.pid]
+    )
+    pid = await request_exec(ns, exec_payload)
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Code Contract Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Code Contract Manager after being allocated RAM.")
@@ -526,7 +620,14 @@ async function start_managers(ns, control_info) {
       control_info.code_contract_manager_pid = pid
     }
 
-    pid = ns.run("/scripts/manage_gang.js",{threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+    exec_payload = new ExecRequestPayload(
+      ns.pid,
+      "/scripts/manage_gang.js",
+      "home",
+      {threads:1,temporary:true},
+      ["--parent_pid", ns.pid]
+    )
+    pid = await request_exec(ns, exec_payload)
     if (pid === 0) {
       log(ns, "ERROR Failed to launch Gang Manager after being allocated RAM.")
       ns.tprint("ERROR Failed to launch Gang Manager after being allocated RAM.")
@@ -552,7 +653,14 @@ async function reboot_process(ns, control_info, old_pid, filename) {
   let server = control_info.ram_state.servers["home"]
   let ram_cost = ns.getScriptRam(filename)
   if (isNaN(old_pid)) {
-    let new_pid = ns.run(filename, {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+    let exec_payload = new ExecRequestPayload(
+      ns.pid,
+      filename,
+      "home",
+      {threads:1,temporary:true},
+      ["--parent_pid", ns.pid]
+    )
+    let new_pid = await request_exec(ns, exec_payload)
     if (new_pid === 0) {
       ns.tprint(`ERROR: Failed to run '${filename}' on home`)
       return Promise.resolve(0)
@@ -581,7 +689,14 @@ async function reboot_process(ns, control_info, old_pid, filename) {
       // Simplest Case: Ram costs of the two scripts are the same, simply replace the running script
       ns.kill(old_pid)
       server.remove_process(ns, old_pid)
-      let new_pid = ns.run(filename, {threads:1,temporary:true}, ...["--parent_pid", ns.pid])
+      let exec_payload = new ExecRequestPayload(
+        ns.pid,
+        filename,
+        "home",
+        {threads:1,temporary:true},
+        ["--parent_pid", ns.pid]
+      )
+      let new_pid = await request_exec(ns, exec_payload)
       if (new_pid === 0) {
         ns.tprint(`ERROR: Failed to run '${filename}' on home.`)
         return Promise.resolve(0)
@@ -602,7 +717,14 @@ async function reboot_process(ns, control_info, old_pid, filename) {
       ns.kill(old_pid)
       let boot_pid = 0
       while (boot_pid === 0) {
-        boot_pid = ns.run("/scripts/boot/reboot.js", {threads:1,temporary:true}, ...["--all"])
+        let exec_payload = new ExecRequestPayload(
+          ns.pid,
+          "/scripts/boot/reboot.js",
+          "home",
+          {threads:1,temporary:true},
+          ["--all"]
+        )
+        boot_pid = await request_exec(ns, exec_payload)
       }
       // I mean we probably won't get much further than this due to reboot being called, but still better than not returning a value
       return Promise.resolve(0)
@@ -620,16 +742,19 @@ export async function main(ns) {
   const RAM_REQUEST_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
   const RAM_PROVIDE_HANDLER   = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
   const SCAN_PROVIDE_HANDLER  = ns.getPortHandle(PORT_IDS.SCAN_PROVIDE_HANDLER)
+  const arg_flags = ns.flags([
+    ["exec_pid",NaN]
+  ])
   let control_info = new ProcessInfo()
+  control_info.exec_manager_pid = arg_flags.exec_pid
+  control_info.control_pid = ns.pid
 
   init(ns)
   update_TUI(ns, control_info, true)
   ns.ui.openTail()
   ns.ui.resizeTail(X_SIZE, Y_SIZE)
 
-
-  ns.ui.setTailTitle("Control Script V4.0 - PID: " + ns.pid)
-  control_info.control_pid = ns.pid
+  ns.ui.setTailTitle("Control Script V4.0 - PID: " + control_info.control_pid)
 
   log(ns,"Start the Server Scanner.")
   await start_server_scanner(ns, control_info, SCAN_PROVIDE_HANDLER)
