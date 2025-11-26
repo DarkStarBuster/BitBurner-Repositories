@@ -103,16 +103,16 @@ export async function main(ns) {
         p_servers[server] = min_ram_purch-1
         num_pserv++;
         
-        while(
-          !UPDATE_HANDLER.tryWrite(
-            JSON.stringify({
-              "action": "update_info",
-              "target": server
-            })
-          )
-        ) {
-          await ns.sleep(4)
-        }
+        // while(
+        //   !UPDATE_HANDLER.tryWrite(
+        //     JSON.stringify({
+        //       "action": "update_info",
+        //       "target": server
+        //     })
+        //   )
+        // ) {
+        //   await ns.sleep(4)
+        // }
         
       }
     }
@@ -141,6 +141,7 @@ export async function main(ns) {
     for (let server in p_servers) {
       if (p_servers[server] == possible_ram.length - 1) {
         maximised_pserv_cnt += 1
+        ns.print(`Maximised PServer Count ${maximised_pserv_cnt}`)
       }
       else {
         ns.print("Server: " + server + " [" + p_servers[server] + "]=>" + possible_ram[p_servers[server]+1] + " Upg. Cost: " + ns.getPurchasedServerUpgradeCost(server,possible_ram[p_servers[server]+1]))
@@ -153,16 +154,16 @@ export async function main(ns) {
           if (upgraded) {
             p_servers[server] = p_servers[server]+1
             
-            while(
-              !UPDATE_HANDLER.tryWrite(
-                JSON.stringify({
-                  "action": "update_info",
-                  "target": server
-                })
-              )
-            ) {
-              await ns.sleep(4)
-            }
+            // while(
+            //   !UPDATE_HANDLER.tryWrite(
+            //     JSON.stringify({
+            //       "action": "update_info",
+            //       "target": server
+            //     })
+            //   )
+            // ) {
+            //   await ns.sleep(4)
+            // }
             
           }
           else {
