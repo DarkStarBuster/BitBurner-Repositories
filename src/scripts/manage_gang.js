@@ -190,6 +190,7 @@ async function create_gang(ns, process_info) {
       created = true
       process_info.in_gang = true
     }
+    update_TUI(ns, process_info)
     await ns.sleep(5000)
   }
 }
