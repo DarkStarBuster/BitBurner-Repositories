@@ -326,7 +326,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     }
   }
 
-  if (!(control_params.hacknet_mgr.hash_target === undefined)) {
+  if (!(control_params.hacknet_mgr.hash_target === null)) {
     if (!(managed_servers.includes(control_params.hacknet_mgr.hash_target) || preping_servers.includes(control_params.hacknet_mgr.hash_target))) {
       for (let server of preping_servers) {
         // log(ns, `Killing preper for ${server} as we need space to prep the hash target`)

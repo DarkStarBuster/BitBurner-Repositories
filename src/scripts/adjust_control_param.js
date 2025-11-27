@@ -5,7 +5,8 @@ import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
  * @param {import("@ns").NS} ns 
  * @param {string} domain 
  * @param {string} property 
- * @param {number | string | boolean} value 
+ * @param {number | string | boolean} value
+ * @param {import("@ns").NetscriptPort} update_handler
  */
 async function send_update(ns, domain, property, value, update_handler) {
     if (
@@ -38,19 +39,19 @@ export async function main(ns) {
   const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
 
   const arg_flags = ns.flags([
-    ["hacknet_mgr",]
-   ,["gang_mgr"   ,]
-   ,["ui"         ,]
-   ,["calc_only"  ,]
-  ])  
+    ["hacknet_mgr",undefined]
+   ,["gang_mgr"   ,undefined]
+   ,["open_ui"    ,undefined]
+   ,["calc_only"  ,undefined]
+  ]) 
 
   if (arg_flags.gang_mgr) {
-    if (arg_flags.ui) {send_update(ns, "gang_mgr", "open_ui", arg_flags.ui, UPDATE_HANDLER)}
-    if (arg_flags.calc_only) {send_update(ns, "gang_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
+    if (arg_flags.open_ui) {await send_update(ns, "gang_mgr", "open_ui", arg_flags.open_ui, UPDATE_HANDLER)}
+    if (arg_flags.calc_only) {await send_update(ns, "gang_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
   }
 
   if (arg_flags.hacknet_mgr) {
-    if (arg_flags.ui) {send_update(ns, "hacknet_mgr", "open_ui", arg_flags.ui, UPDATE_HANDLER)}
+    if (arg_flags.open_ui) {send_update(ns, "hacknet_mgr", "open_ui", arg_flags.open_ui, UPDATE_HANDLER)}
     if (arg_flags.calc_only) {send_update(ns, "hacknet_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
   }
 }
