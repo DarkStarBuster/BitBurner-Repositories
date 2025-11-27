@@ -564,6 +564,9 @@ function release_pids_ram(pid_to_release, process_info) {
 function audit_ram_state(ns, ram_state) {
   for (let server in ram_state) {
     for (let pid in ram_state[server].ram_slices) {
+      if (pid === "-1") {
+        continue
+      } //exclude the terminal process ^^;
       if (!ns.isRunning(parseInt(pid))) {
         ns.tprint(`ERROR: RAM State contained dead process '${ram_state[server].ram_slices[pid].pid_filename}' (${ram_state[server].ram_slices[pid].pid}) ${ns.formatRam(ram_state[server].ram_slices[pid].slice_amount)}`)
         ram_state[server].free_ram = round_ram_cost(ram_state[server].free_ram + ram_state[server].ram_slices[pid].slice_amount)
