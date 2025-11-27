@@ -347,6 +347,8 @@ export async function main(ns) {
     update_TUI(ns, process_info, true)
     await create_gang(ns, process_info)
   }
+  // We can start Warfare again later, make sure it's not on by default.
+  ns.gang.setTerritoryWarfare(false)
 
   ns.atExit(function() {
     // If / when the script exits, ensure we do not leave Territory Warfare on
