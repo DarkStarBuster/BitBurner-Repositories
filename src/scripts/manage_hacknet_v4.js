@@ -1,5 +1,6 @@
-import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { ScanFilter, request_scan } from "/src/scripts/core/util_server_scanning"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
+import { ControlParameters } from "/src/scripts/core/util_control_parameters";
 
 class ProcessInfo {
   /** @type {string} */
@@ -257,6 +258,7 @@ export async function main(ns) {
 
   let process_info = new ProcessInfo()
 
+  /** @type {ControlParameters} */
   let control_params = JSON.parse(CONTROL_PARAMETERS.peek())
   let bitnode_mults = JSON.parse(BITNODE_MULTS_HANDLER.peek())
 
@@ -316,9 +318,6 @@ export async function main(ns) {
         total_production = total_production * ONE_HASH_WORTH
       }
     }
-
-    let recent_script_income  = ns.getTotalScriptIncome()[0] // 0 is $/s of active scripts, 1 is $/s of scripts run since last installing Augs.
-    let recent_hacknet_income = total_production
 
     process_info.most_recent_action = `Deciding Hash Target`
     update_TUI(ns, process_info)
@@ -424,7 +423,7 @@ export async function main(ns) {
     // time we would save by buying that upgrade.
     process_info.focus_upgrades = false
 
-    process_info.ttb_upg = process_info.gain_cost / (recent_script_income + recent_hacknet_income)
+    process_info.ttb_upg = process_info.gain_cost / control_params.player_mgr.total_income
     let new_diff_to_1_ttb  = diff_to_1_cost  / ((total_production / ONE_HASH_WORTH) + gain) 
     let new_mon_to_e13_ttb = mon_to_e13_cost / ((total_production / ONE_HASH_WORTH) + gain) 
     process_info.ttb_w_upg = new_diff_to_1_ttb + new_mon_to_e13_ttb

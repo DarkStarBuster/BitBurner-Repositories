@@ -1,7 +1,6 @@
-import { append_to_file, delete_file, rename_file } from "/src/scripts/util/static/file_management"
-import { ExecRequestPayload, request_exec } from "/src/scripts/util/dynamic/manage_exec"
+import { ExecRequestPayload, KillRequestPayload, request_exec, request_kill } from "/src/scripts/core/manage_exec"
 
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
@@ -33,7 +32,6 @@ const RAM_INFO = {
  */
 function init(ns) {
   disable_logs(ns)
-  init_file_log(ns)
 
   for(let server in RAM_INFO) {
     delete RAM_INFO[server]
@@ -44,26 +42,6 @@ function init(ns) {
 function disable_logs(ns){
   ns.disableLog("ALL")
   ns.enableLog("exec")
-}
-
-/**
- * @param {import("@ns").NS} ns 
- */
-function init_file_log(ns){
-  if (ns.fileExists(PRIOR_LOG_FILENAME)) {
-    delete_file(ns, PRIOR_LOG_FILENAME)
-  }
-  if (ns.fileExists(LOG_FILENAME)) {
-    rename_file(ns, LOG_FILENAME, PRIOR_LOG_FILENAME)
-  }
-}
-
-/**
- * @param {import("@ns").NS} ns 
- * @param {string} message 
- */
-function log(ns, message) {
-  append_to_file(ns, LOG_FILENAME, message + "\n")
 }
 
 /**
@@ -182,7 +160,11 @@ async function kill_child(ns, childs_target) {
 
   for (let num in pids_to_kill) {
     if (ns.isRunning(parseInt(pids_to_kill[num].pid))) {
-      ns.kill(parseInt(pids_to_kill[num].pid))
+      let kill_payload = new KillRequestPayload(
+        ns.pid
+       ,parseInt(pids_to_kill[num].pid)
+      )
+      await request_kill(ns, kill_payload)
     }
     let response = await release_ram(ns, pids_to_kill[num].server, pids_to_kill[num].ram_cost)
     if (!(response.result === "OK")) {
@@ -317,7 +299,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
   for (let server of servers_to_hack) {
     // Not managing currently, request new manager
     let successful = false
-    if (managed_servers.indexOf(server) == -1) {
+    if (managed_servers.indexOf(server) == -1 && managed_servers.length < 2) {
       // log(ns, "Launching manager for " + server + ".")
       successful = await launch_child(ns, "/scripts/manage_server_hack_v3.js", server)
       if (!successful) {
@@ -326,7 +308,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     }
   }
 
-  if (!(control_params.hacknet_mgr.hash_target === null)) {
+  if (!((control_params.hacknet_mgr.hash_target === null) || (control_params.hacknet_mgr.hash_target === undefined))) {
     if (!(managed_servers.includes(control_params.hacknet_mgr.hash_target) || preping_servers.includes(control_params.hacknet_mgr.hash_target))) {
       for (let server of preping_servers) {
         // log(ns, `Killing preper for ${server} as we need space to prep the hash target`)
@@ -352,7 +334,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
     let successful = false
     //ns.print("Server: " + server + ". P_S: " + preping_servers.length + ". Inclues: " + preping_servers.includes(server))
     if (
-        preping_servers.length < 10
+        preping_servers.length < 2
     &&  !preping_servers.includes(server)
     ) {
       // log(ns, "Launching prepper for " + server + ".")

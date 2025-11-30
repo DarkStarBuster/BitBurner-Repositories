@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 import { kill_all_other_processes } from "/src/scripts/util/static/kill_all_other_processes"
 
 /** 
@@ -13,11 +13,12 @@ export async function main(ns) {
 
   const arg_flags = ns.flags([
     ["all"  ,false]
-   ,["gang" ,false]
+   ,["gang_mgr" ,false]
    ,["freeram",false]
    ,["hacknet_mgr",false]
    ,["root_mgr",false]
    ,["server_scan",false]
+   ,["sleeve_mgr",false]
   ])
 
   if (arg_flags.all) {
@@ -38,7 +39,7 @@ export async function main(ns) {
   }
 
 
-  if (arg_flags.gang) {
+  if (arg_flags.gang_mgr) {
     const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
     while(
       !UPDATE_HANDLER.tryWrite(
@@ -110,6 +111,22 @@ export async function main(ns) {
           "action": "request_action"
          ,"request_action": {
             "script_action": "reboot_server_scan"
+          }
+        })
+      )
+    ) {
+      await ns.sleep(4)
+    }
+  }
+
+  if (arg_flags.sleeve_mgr) {
+    const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+    while(
+      !UPDATE_HANDLER.tryWrite(
+        JSON.stringify({
+          "action": "request_action"
+         ,"request_action": {
+            "script_action": "reboot_sleeve_mgr"
           }
         })
       )

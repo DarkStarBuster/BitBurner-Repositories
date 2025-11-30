@@ -1,4 +1,4 @@
-import { PORT_IDS, PORT_NAMES } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS, PORT_NAMES } from "/src/scripts/boot/manage_ports"
 import { kill_all_other_processes } from "/src/scripts/util/static/kill_all_other_processes"
 
 /** 
@@ -12,7 +12,7 @@ function setup_port_ids(ns) {
   let ports = []
   ns.tprint(`INFO: Setting up port IDs.`)
   for (let name in PORT_NAMES) {
-    let pid = ns.run("scripts/util/dynamic/pid_provider.js", {threads:1, temporary:true})
+    let pid = ns.run("scripts/boot/pid_provider.js", {threads:1, temporary:true})
     if (pid === 0) {
       ns.tprint(`ERROR: Failed to run pid provider script. Aborting startup process.`)
       ns.exit()
@@ -22,13 +22,13 @@ function setup_port_ids(ns) {
     ports.push(pid)
   }
 
-  ns.run("scripts/util/dynamic/manage_ports.js", {threads:1,temporary:true}, ...ports)
+  ns.run("scripts/boot/manage_ports.js", {threads:1,temporary:true}, ...ports)
   ns.tprint(`INFO: Setup ${ports.length / 2} ports.`)
 }
 
 /** @param {import("@ns").NS} ns */
 function setup_exec_mgr(ns) {
-  let pid = ns.run("scripts/util/dynamic/manage_exec.js", {threads:1, temporary:true}, ...["--parent_pid", ns.pid])
+  let pid = ns.run("scripts/core/manage_exec.js", {threads:1, temporary:true}, ...["--parent_pid", ns.pid])
   if (pid === 0) {
     ns.tprint(`ERROR: Failed to run the exec manager script. Aborting startup process.`)
     ns.exit()
@@ -63,6 +63,7 @@ export async function main(ns) {
   ]
 
   // Begin main control loop
+  ns.tprint(`INFO: Run Control Process`)
   ns.run("scripts/control_v4.js", {threads:1, temporary:true}, ...args)
 
 }

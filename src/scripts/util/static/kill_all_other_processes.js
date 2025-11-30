@@ -1,5 +1,5 @@
-import { ScanFilter, scan_for_servers } from "/src/scripts/util/dynamic/manage_server_scanning"
-
+import { scan_for_servers } from "/src/scripts/core/manage_server_scanning"
+import { ScanFilter } from "/src/scripts/core/util_server_scanning"
 /**
  * @param {import("@ns").NS} ns
  */

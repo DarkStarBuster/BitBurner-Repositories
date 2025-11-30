@@ -1,27 +1,7 @@
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
+import { ScanFilter } from "/src/scripts/util_server_scanning"
 const DEPTH_LIMIT = 50
 const DEBUG = false
-
-export class ScanFilter {
-  /** @type {boolean} */
-  is_rooted       = undefined;
-  /** @type {boolean} */
-  is_rootable     = undefined;
-  /** @type {boolean} */
-  is_hackable     = undefined;
-  /** @type {boolean} */
-  has_money       = undefined;
-  /** @type {boolean} */
-  has_ram         = undefined;
-  /** @type {boolean} */
-  include_home    = undefined;
-  /** @type {boolean} */
-  include_pserv   = undefined;
-  /** @type {boolean} */
-  include_hacknet = undefined;
-
-  constructor() {}
-}
 
 export class ServerState {
   /** @type {string} */
@@ -50,32 +30,32 @@ export class ServerState {
    * @param {string} server 
    */
   constructor(ns, server) {
-    let hacknet = server.includes("hacknet")
+    let hashnet = server.includes("hacknet")
     let pserv = server.includes("pserv")
     this.hostname      = server
-    this.curr_money    = (hacknet || pserv) ? 0 : ns.getServerMoneyAvailable(server)
-    this.max_money     = (hacknet || pserv) ? 0 : ns.getServerMaxMoney(server)
+    this.curr_money    = (hashnet || pserv) ? 0 : ns.getServerMoneyAvailable(server)
+    this.max_money     = (hashnet || pserv) ? 0 : ns.getServerMaxMoney(server)
     this.max_ram       = ns.getServerMaxRam(server)
-    this.curr_diff     = (hacknet || pserv) ? 0 : ns.getServerSecurityLevel(server)
-    this.min_diff      = (hacknet || pserv) ? 0 : ns.getServerMinSecurityLevel(server)
-    this.num_ports_req = (hacknet || pserv) ? 0 : ns.getServerNumPortsRequired(server)
-    this.hack_lvl_req  = (hacknet || pserv) ? 0 : ns.getServerRequiredHackingLevel(server)
+    this.curr_diff     = (hashnet || pserv) ? 0 : ns.getServerSecurityLevel(server)
+    this.min_diff      = (hashnet || pserv) ? 0 : ns.getServerMinSecurityLevel(server)
+    this.num_ports_req = (hashnet || pserv) ? 0 : ns.getServerNumPortsRequired(server)
+    this.hack_lvl_req  = (hashnet || pserv) ? 0 : ns.getServerRequiredHackingLevel(server)
     this.is_rooted     = ns.hasRootAccess(server)
-    this.growth        = (hacknet || pserv) ? 0 : ns.getServerGrowth(server)
+    this.growth        = (hashnet || pserv) ? 0 : ns.getServerGrowth(server)
   }
 
   update(ns) {
-    let hacknet = this.hostname.includes("hacknet")
+    let hashnet = this.hostname.includes("hacknet")
     let pserv = this.hostname.includes("pserv")
-    this.curr_money    = (hacknet || pserv) ? 0 : ns.getServerMoneyAvailable(this.hostname)
-    this.max_money     = (hacknet || pserv) ? 0 : ns.getServerMaxMoney(this.hostname)
+    this.curr_money    = (hashnet || pserv) ? 0 : ns.getServerMoneyAvailable(this.hostname)
+    this.max_money     = (hashnet || pserv) ? 0 : ns.getServerMaxMoney(this.hostname)
     this.max_ram       = ns.getServerMaxRam(this.hostname)
-    this.curr_diff     = (hacknet || pserv) ? 0 : ns.getServerSecurityLevel(this.hostname)
-    this.min_diff      = (hacknet || pserv) ? 0 : ns.getServerMinSecurityLevel(this.hostname)
-    this.num_ports_req = (hacknet || pserv) ? 0 : ns.getServerNumPortsRequired(this.hostname)
-    this.hack_lvl_req  = (hacknet || pserv) ? 0 : ns.getServerRequiredHackingLevel(this.hostname)
+    this.curr_diff     = (hashnet || pserv) ? 0 : ns.getServerSecurityLevel(this.hostname)
+    this.min_diff      = (hashnet || pserv) ? 0 : ns.getServerMinSecurityLevel(this.hostname)
+    this.num_ports_req = (hashnet || pserv) ? 0 : ns.getServerNumPortsRequired(this.hostname)
+    this.hack_lvl_req  = (hashnet || pserv) ? 0 : ns.getServerRequiredHackingLevel(this.hostname)
     this.is_rooted     = ns.hasRootAccess(this.hostname)
-    this.growth        = (hacknet || pserv) ? 0 : ns.getServerGrowth(this.hostname)
+    this.growth        = (hashnet || pserv) ? 0 : ns.getServerGrowth(this.hostname)
   }
 }
 
@@ -173,74 +153,6 @@ function update_TUI(ns, process_info) {
   }
 }
 
-/**
- * @param {import("@ns").NS} ns 
- * @param {ScanFilter} filter 
- * @returns {Promise<string[]>} A list of server names that match the given filter
- */
-export async function request_scan(ns, filter = new ScanFilter(), debug = false) {
-  const SCAN_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.SCAN_REQUEST_HANDLER)
-  const SCAN_PROVIDE_HANDLER = ns.getPortHandle(PORT_IDS.SCAN_PROVIDE_HANDLER)
-  let do_log = (DEBUG || debug)
-
-  // ns.print(`Building Scan Request`)
-  let request = {
-    action : "scan_request"
-   ,payload: {
-      requester: ns.pid
-     ,filters  : filter
-     ,debug    : do_log
-    }
-  }
-  
-  // for (let name in request) {
-  //   if (typeof request[name] == typeof {}) {
-  //     for (let name2 in request[name]) {
-  //       ns.tprint(`${name}.${name2}: ${request[name][name2]}`)
-  //     }
-  //   }
-  //   else {
-  //     ns.tprint(`${name}: ${request[name]}`)
-  //   }
-  // }
-
-  // ns.print(`Sending Scan Request`)
-  while (!SCAN_REQUEST_HANDLER.tryWrite(JSON.stringify(request))) {await ns.sleep(4)}
-  
-  let recieved_response = false
-  let response
-  // ns.print(`Awaiting`)
-  while (!recieved_response) {
-    while (SCAN_PROVIDE_HANDLER.empty()) {
-      await ns.sleep(4)
-    }
-    response = JSON.parse(SCAN_PROVIDE_HANDLER.peek())
-    if (
-        response.action == "scan_response"
-    &&  response.payload.requester == ns.pid
-    ) {
-      // ns.print(`Handling Response`)
-      SCAN_PROVIDE_HANDLER.read()
-      recieved_response = true
-    }
-    await ns.sleep(4)
-  }
-  
-  // for (let name in response) {
-  //   if (typeof response[name] == typeof {}) {
-  //     for (let name2 in response[name]) {
-  //       ns.tprint(`${name}.${name2}: ${response[name][name2]}`)
-  //     }
-  //   }
-  //   else {
-  //     ns.tprint(`${name}: ${response[name]}`)
-  //   }
-  // }
-
-  // ns.print(`Returning Response`)
-  return Promise.resolve(response.payload.result)
-}
-
 
 /**
  * @param {import("@ns").NS} ns - NetScript environment
@@ -333,7 +245,7 @@ function scan_for_servers_recur(ns, server, filters = {}, servers = [], results 
             //ns.print("Failed due to pserv")
             fail_filter_cnt += 1
             break
-          case "include_hacknet":
+          case "include_hashnet":
             if (
                 scan_result.includes("hacknet") === filters[filter]
             ||  !scan_result.includes("hacknet")
@@ -448,7 +360,7 @@ export function scan_for_servers(ns, filters, debug = false) {
       case "include_pserv":
         continue
         break
-      case "include_hacknet":
+      case "include_hashnet":
         continue
         break
       default:
@@ -470,9 +382,10 @@ export function scan_for_servers(ns, filters, debug = false) {
 
 /** @param {import("@ns").NS} ns */
 export async function main(ns) {
+  const CONTROL_PARAM_HANDLER = ns.getPortHandle(PORT_IDS.CONTROL_PARAM_HANDLER)
+  const SERVER_INFO_HANDLER  = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)
   const SCAN_PROVIDE_HANDLER = ns.getPortHandle(PORT_IDS.SCAN_PROVIDE_HANDLER)
   const SCAN_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.SCAN_REQUEST_HANDLER)
-  const SERVER_INFO_HANDLER  = ns.getPortHandle(PORT_IDS.SERVER_INFO_HANDLER)
   const arg_flags = ns.flags([
     ["parent_pid",""]
   ])
@@ -482,16 +395,12 @@ export async function main(ns) {
   let process_info = new ProcessInfo()
   let filter = new ScanFilter()
   filter.include_home = true
-  filter.include_hacknet = true
+  filter.include_hashnet = true
   filter.include_pserv = true
-  let servers = scan_for_servers(ns, filter)
-  for(let server of servers) {
-    process_info.max_name_length = Math.max(process_info.max_name_length, server.length, 0)
-    process_info.add_server(ns, server)
-  }
+
   SERVER_INFO_HANDLER.clear()
-  SERVER_INFO_HANDLER.write(JSON.stringify(process_info.all_servers))
-  process_info.last_server_update = performance.now()
+  // SERVER_INFO_HANDLER.write(JSON.stringify(process_info.all_servers))
+  // process_info.last_server_update = performance.now()
 
   ns.ui.setTailTitle("Sever Scan Manager V1.0 - PID: " + ns.pid)
 
@@ -505,18 +414,32 @@ export async function main(ns) {
   )) {
     await ns.sleep(4)
   }
+
+  // ns.print(`Waiting for Control Parameters...`)
+  // while (CONTROL_PARAM_HANDLER.empty()) {
+  //   await ns.sleep(4)
+  // }
+  /** @type {import("/src/scripts/core/util_control_parameters").ControlParameters} */
+  let control_params
+  // process_info.max_name_length = control_params.servers.max_name_length
+
   ns.print(`Init Complete.`)
 
   while (true) {
+    if (!CONTROL_PARAM_HANDLER.empty()) {
+      control_params = JSON.parse(CONTROL_PARAM_HANDLER.peek())
+      process_info.max_name_length = control_params.servers.max_name_length
+    }
+    // if (control_params.scan_mgr.do_logging) {ns.tprint(`Server Scanner max length: ${process_info.max_name_length}`)}
+
     if ((process_info.last_ui_update + 1000) < performance.now()) {
       update_TUI(ns, process_info)
       process_info.last_ui_update = performance.now()
     }
 
-    if ((process_info.last_server_update + 5000) < performance.now()) {
-      servers = scan_for_servers(ns, filter)
+    if ((process_info.last_server_update + 200) < performance.now()) {
+      let servers = scan_for_servers(ns, filter)
       for (let server of servers) {
-        process_info.max_name_length = Math.max(process_info.max_name_length, server.length, 0)
         process_info.update_server(ns, server)
       }
       SERVER_INFO_HANDLER.clear()
@@ -525,6 +448,8 @@ export async function main(ns) {
       process_info.most_recent_action = `Update Server Info port`
     }
 
+    let request_to_process = true
+    let wait_start = performance.now()
     while (SCAN_REQUEST_HANDLER.empty()) {
       if (!(SCAN_PROVIDE_HANDLER.empty())) {
         let next_response = JSON.parse(SCAN_PROVIDE_HANDLER.peek())
@@ -534,37 +459,41 @@ export async function main(ns) {
         }
       }
       process_info.most_recent_action = `Waiting for Scan Request`
+      //Spend 0.2 seconds checking for new requests on the port
+      if (wait_start + 200 < performance.now()) {request_to_process = false; break;}
       await ns.sleep(4) // Check the PORT every 0.05 seconds
     }
 
-    process_info.most_recent_action = `Scan Request recieved`
-    let request = JSON.parse(SCAN_REQUEST_HANDLER.read())
+    if (request_to_process) {
+      process_info.most_recent_action = `Scan Request recieved`
+      let request = JSON.parse(SCAN_REQUEST_HANDLER.read())
 
-    /**
-     *  request = {
-     *    action  = "scan_request"
-     *   ,payload = {
-     *      requester = <pid>
-     *     ,filters   = {}
-     *    }
-     *  }
-     */
-    
-    let result = scan_for_servers(ns, request.payload.filters, request.payload.debug)
+      /**
+       *  request = {
+       *    action  = "scan_request"
+       *   ,payload = {
+       *      requester = <pid>
+       *     ,filters   = {}
+       *    }
+       *  }
+       */
+      
+      let result = scan_for_servers(ns, request.payload.filters, request.payload.debug)
 
-    let response = {
-      action : "scan_response"
-     ,payload: {
-        requester: (request.payload.requester)
-       ,result   : result
+      let response = {
+        action : "scan_response"
+      ,payload: {
+          requester: (request.payload.requester)
+        ,result   : result
+        }
       }
-    }
 
-    while (!SCAN_PROVIDE_HANDLER.tryWrite(
-      JSON.stringify(response)
-    )) {
-      await ns.sleep(4) // Try to write our response to the port every 0.004 seconds.
+      while (!SCAN_PROVIDE_HANDLER.tryWrite(
+        JSON.stringify(response)
+      )) {
+        await ns.sleep(4) // Try to write our response to the port every 0.004 seconds.
+      }
+      process_info.most_recent_action = `Send Request Response`
     }
-    process_info.most_recent_action = `Send Request Response`
   }
 }

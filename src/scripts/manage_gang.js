@@ -1,5 +1,5 @@
 import { COLOUR, colourize} from "/src/scripts/util/constant_utilities"
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
 const MAX_NUM_MEMBERS = 12
 const NAMES = {
@@ -30,6 +30,8 @@ class ProcessInfo {
   last_ui_update = 0;
   /** @type {number} */
   last_member_update = 0;
+  /** @type {number} */
+  last_gang_money_update = 0;
   /** @type {string} */
   most_recent_action;
   /** @type {string} */
@@ -184,14 +186,25 @@ function update_TUI(ns, process_info, force_update = false) {
  */
 async function create_gang(ns, process_info) {
   let created = false
+  let UPDATE_HANDLER = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
   while(!created) {
+    await ns.sleep(5000)
     let gang_created = ns.gang.createGang(process_info.gang_faction)
     if (gang_created) {
       created = true
       process_info.in_gang = true
+      while (!UPDATE_HANDLER.tryWrite(JSON.stringify({
+        action : "update_control_param"
+       ,payload: {
+          domain  : "gang_mgr"
+         ,property: "created"
+         ,value   : true
+        }
+      }))) {
+        await ns.sleep(4)
+      }
     }
     update_TUI(ns, process_info)
-    await ns.sleep(5000)
   }
 }
 
@@ -257,10 +270,10 @@ function assign_member_tasks(ns, process_info, clash_tick) {
       }
       else if (
           (   (process_info.gang_info.respect < 2e6)
-          &&  (process_info.gang_info.wantedPenalty >= 0.7))
+          &&  (process_info.gang_info.wantedPenalty >= 0.5))
       ||  (   (process_info.gang_info.territory == 0)
           &&  (process_info.gang_info.respect < 7e8)
-          &&  (process_info.gang_info.wantedPenalty >= 0.7))
+          &&  (process_info.gang_info.wantedPenalty >= 0.5))
       ){
         ns.gang.setMemberTask(name, String.fromCharCode(84) + "errorism")
       }
@@ -347,6 +360,19 @@ export async function main(ns) {
     update_TUI(ns, process_info, true)
     await create_gang(ns, process_info)
   }
+  else {
+    let UPDATE_HANDLER = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+    while (!UPDATE_HANDLER.tryWrite(JSON.stringify({
+      action : "update_control_param"
+     ,payload: {
+        domain  : "gang_mgr"
+       ,property: "created"
+       ,value   : true
+      }
+    }))) {
+      await ns.sleep(4)
+    }
+  }
   // We can start Warfare again later, make sure it's not on by default.
   ns.gang.setTerritoryWarfare(false)
 
@@ -364,15 +390,27 @@ export async function main(ns) {
     process_info.purchase_perc  = control_params.gang_mgr.purchase_perc
     process_info.ascension_mult = control_params.gang_mgr.ascension_mult
     process_info.open_ui        = control_params.gang_mgr.open_ui
+    // Update our power
+    process_info.gang_info = ns.gang.getGangInformation()
+    if(process_info.last_gang_money_update + 10000 < performance.now()) {
+      let UPDATE_HANDLER = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
+      while(!UPDATE_HANDLER.tryWrite(JSON.stringify({
+        action : "update_control_param"
+       ,payload: {
+          domain  : "gang_mgr"
+         ,property: "gang_income"
+         ,value   : process_info.gang_info.moneyGainRate
+        }
+      })))
+      process_info.last_gang_money_update = performance.now()
+    }
     // Are we in a clash tick?
     let power_check = ns.gang.getOtherGangInformation()[process_info.check_faction].power
     let clash_tick = false
-    if (power_check != process_info.previous_check_power) {
+    if (power_check != process_info.previous_check_power && !(process_info.gang_info.territory === 1)) {
       clash_tick = true
       process_info.previous_check_power = power_check
     }
-    // Update our power
-    process_info.gang_info = ns.gang.getGangInformation()
     // Find max power of other gang
     process_info.max_gang_power = 0
     process_info.max_gang_territory = 0
@@ -409,7 +447,7 @@ export async function main(ns) {
     assign_member_tasks(ns, process_info, clash_tick)
 
     // Should we Clash?
-    if (process_info.gang_info.power < (process_info.max_gang_power * 2)) {
+    if ((process_info.gang_info.power < (process_info.max_gang_power * 2)) || (process_info.gang_info.territory === 1)) {
       ns.gang.setTerritoryWarfare(false)
     }
     else {

@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
 /** @param {import("@ns").NS} ns */
 export async function main(ns) {

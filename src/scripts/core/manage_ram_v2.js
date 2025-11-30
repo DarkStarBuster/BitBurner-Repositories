@@ -1,6 +1,6 @@
 import { COLOUR, colourize } from "/src/scripts/util/constant_utilities"
 import { round_ram_cost } from "/src/scripts/util/rounding"
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
 const RAM_STATE = {}
 let RAM_STATE_ORDERED = []
@@ -162,11 +162,12 @@ function update_TUI(ns, process_info, force_update = false) {
 }
 
 /**
+ * @param {import("@ns").NS} ns
  * @param {import("@ns").NetscriptPort} server_info_handler
  * @param {import("@ns").NetscriptPort} control_parameters
  * @param {ProcessInfo} process_info
  */
-async function initialise_ram_manager(server_info_handler, control_parameters, process_info) {
+async function initialise_ram_manager(ns, server_info_handler, control_parameters, process_info) {
 
   while(
         server_info_handler.empty()
@@ -621,10 +622,14 @@ export async function main(ns) {
   }
 
   while (true) {
+    if (!CONTROL_PARAMETERS.empty()) {
+      let control_param = JSON.parse(CONTROL_PARAMETERS.peek())
+      process_info.max_server_name_length = control_param.servers.max_name_length
+    }
 
     if (!initialised) {
       //ns.print("Initializing...")
-      let init_msg = await initialise_ram_manager(SERVER_INFO_HANDLER, CONTROL_PARAMETERS, process_info)
+      let init_msg = await initialise_ram_manager(ns, SERVER_INFO_HANDLER, CONTROL_PARAMETERS, process_info)
       RAM_PROVIDE_HANDLER.write(JSON.stringify(init_msg))
       initialised = true
       //ns.print("Finished Initializing.")

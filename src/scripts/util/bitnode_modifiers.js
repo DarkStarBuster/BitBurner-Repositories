@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
 // Could be done with only one of larger/smaller but I like completeness.
 

@@ -1,6 +1,6 @@
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
-import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
-import { ExecRequestPayload, request_exec } from "/src/scripts/util/dynamic/manage_exec"
+import { ScanFilter, request_scan } from "/src/scripts/core/util_server_scanning"
+import { ExecRequestPayload, request_exec } from "/src/scripts/core/manage_exec"
 
 // Find Largest Prime Factor
 // Subarray with Maximum Sum

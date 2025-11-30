@@ -1,5 +1,26 @@
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 const DEBUG = false
+
+const REQUEST_TYPES = {
+  EXEC: "exec_request"
+ ,KILL: "kill_request"
+}
+
+export class KillRequestPayload {
+  /** @type {number} */
+  requester;
+  /** @type {number} */
+  pid;
+
+  /**
+   * @param {number} requester 
+   * @param {number} pid 
+   */
+  constructor(requester, pid) {
+    this.requester = requester
+    this.pid = pid
+  }
+}
 
 export class ExecRequestPayload {
   /** @type {number} */
@@ -32,30 +53,30 @@ export class ExecRequestPayload {
 }
 
 export class Request {
-  /** @type {"exec_request"} */
+  /** @type {string} */
   action;
-  /** @type {ExecRequestPayload} */
+  /** @type {ExecRequestPayload | KillRequestPayload} */
   payload;
 
-  constructor(payload) {
-    this.action   = "exec_request"
+  /**
+   * 
+   * @param {string} type One of REQUEST_TYPE
+   * @param {ExecRequestPayload | KillRequestPayload} payload 
+   */
+  constructor(type, payload) {
+    this.action   = type
     this.payload  = payload
   }
 }
 
 /**
+ * 
  * @param {import("@ns").NS} ns 
- * @param {ExecRequestPayload} payload 
- * @returns {Promise<number>} The pid of the new process if successful, 0 otherwise
+ * @param {Request} request 
  */
-export async function request_exec(ns, payload = new ExecRequestPayload()) {
+async function do_request(ns, request) {
   const EXEC_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.EXEC_REQUEST_HANDLER)
   const EXEC_PROVIDE_HANDLER = ns.getPortHandle(PORT_IDS.EXEC_PROVIDE_HANDLER)
-
-  if (DEBUG) {
-    ns.tprint(`Building Exec Request`)
-  }
-  let request = new Request(payload)
   
   if (DEBUG) {
     for (let name in request) {
@@ -71,7 +92,7 @@ export async function request_exec(ns, payload = new ExecRequestPayload()) {
   }
 
   if (DEBUG) {
-    ns.tprint(`Sending Exec Request`)
+    ns.tprint(`Sending Request`)
   }
   while (!EXEC_REQUEST_HANDLER.tryWrite(JSON.stringify(request))) {await ns.sleep(4)}
   
@@ -85,10 +106,7 @@ export async function request_exec(ns, payload = new ExecRequestPayload()) {
       await ns.sleep(4)
     }
     response = JSON.parse(EXEC_PROVIDE_HANDLER.peek())
-    if (
-        response.action == "exec_response"
-    &&  response.payload.requester == ns.pid
-    ) {
+    if (response.payload.requester == ns.pid) {
       if (DEBUG) {
         ns.tprint(`Handling Response`)
       }
@@ -114,6 +132,40 @@ export async function request_exec(ns, payload = new ExecRequestPayload()) {
   if (DEBUG) {
     ns.tprint(`Returning Response`)
   }
+
+  return Promise.resolve(response)
+}
+
+/**
+ * @param {import("@ns").NS} ns 
+ * @param {KillRequestPayload} payload 
+ * @returns {Promise<boolean>} True if the pid was killed, false otherwise
+ */
+export async function request_kill(ns, payload = new KillRequestPayload()) {
+  if (DEBUG) {
+    ns.tprint(`Building Kill Request`)
+  }
+  let request = new Request(REQUEST_TYPES.KILL, payload)
+
+  let response = await do_request(ns, request)
+
+  return Promise.resolve(response.payload.pid_killed)
+}
+
+/**
+ * @param {import("@ns").NS} ns 
+ * @param {ExecRequestPayload} payload 
+ * @returns {Promise<number>} The pid of the new process if successful, 0 otherwise
+ */
+export async function request_exec(ns, payload = new ExecRequestPayload()) {
+
+  if (DEBUG) {
+    ns.tprint(`Building Exec Request`)
+  }
+  let request = new Request(REQUEST_TYPES.EXEC, payload)
+
+  let response = await do_request(ns, request)
+
   return Promise.resolve(response.payload.pid)
 }
 
@@ -161,7 +213,7 @@ export async function main(ns) {
           EXEC_PROVIDE_HANDLER.read()
         }
       }
-      await ns.sleep(200) // Check the PORT every 0.2 seconds
+      await ns.sleep(4) // Check the PORT every 0.004 seconds
     }
 
     let request = JSON.parse(EXEC_REQUEST_HANDLER.read())
@@ -178,17 +230,33 @@ export async function main(ns) {
      *    }
      *  }
      */
-    
-    let result_pid = perform_exec(ns, request.payload)
-    ns.print(`Result: ${result_pid}`)
 
-    let response = {
-      action : "exec_response"
-     ,payload: {
-        requester: (request.payload.requester)
-       ,pid      : result_pid
-      }
+    let response
+    switch (request.action) {
+      case REQUEST_TYPES.EXEC:
+        let result_pid = perform_exec(ns, request.payload)
+        response = {
+          action : "exec_response"
+         ,payload: {
+            requester: (request.payload.requester)
+           ,pid      : result_pid
+          }
+        }
+        break;
+      case REQUEST_TYPES.KILL:
+        let killed = ns.kill(request.payload.pid)
+        response = {
+          action : "kill_response"
+         ,payload: {
+            requester : (request.payload.requester)
+           ,pid_killed: killed
+          } 
+        }
+      default:
+        break;
     }
+    
+    ns.print(`Response generated: ${response}`)
 
     while (!EXEC_PROVIDE_HANDLER.tryWrite(
       JSON.stringify(response)

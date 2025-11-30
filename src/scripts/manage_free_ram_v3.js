@@ -1,6 +1,6 @@
-import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
-import { ExecRequestPayload, request_exec } from "/src/scripts/util/dynamic/manage_exec"
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { ScanFilter, request_scan } from "/src/scripts/core/util_server_scanning"
+import { ExecRequestPayload, KillRequestPayload, request_exec, request_kill } from "/src/scripts/core/manage_exec"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
 
 /**
@@ -212,7 +212,11 @@ async function consume_ram(ns, p_servers, server_to_run, server_to_check, script
       ||  server_to_run === "home")
   ) {
     if(!(p_servers[server_to_run].process_id === 0)) {
-      ns.kill(p_servers[server_to_run].process_id)
+      let kill_payload = new KillRequestPayload(
+        ns.pid
+       ,parseInt(p_servers[server_to_run].process_id)
+      )
+      await request_kill(ns, kill_payload)
       p_servers[server_to_run].process_id = 0
       p_servers[server_to_run].threads = 0
       await release_ram(ns, server_to_run, ram_request_handler, ram_provide_handler)
@@ -237,7 +241,11 @@ async function consume_ram(ns, p_servers, server_to_run, server_to_check, script
       }
     }
     else if (threads > p_servers[server_to_run].threads) {
-      ns.kill(p_servers[server_to_run].process_id)
+      let kill_payload = new KillRequestPayload(
+        ns.pid
+       ,parseInt(p_servers[server_to_run].process_id)
+      )
+      await request_kill(ns, kill_payload)
       p_servers[server_to_run].process_id = 0
       p_servers[server_to_run].threads = 0
       await release_ram(ns, server_to_run, ram_request_handler, ram_provide_handler)
@@ -290,7 +298,7 @@ export async function main(ns) {
   filter.is_rooted = true
   filter.has_ram = true
   filter.include_pserv = true
-  filter.include_hacknet = false
+  filter.include_hashnet = false
   while(true) {
     let control_params = JSON.parse(CONTROL_PARAMETERS.peek())
     let server_info    = JSON.parse(SERVER_INFO_HANDLER.peek())

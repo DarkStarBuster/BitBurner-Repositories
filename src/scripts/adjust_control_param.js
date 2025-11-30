@@ -1,4 +1,4 @@
-import { PORT_IDS } from "/src/scripts/util/dynamic/manage_ports"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
 /**
  * 
@@ -39,19 +39,28 @@ export async function main(ns) {
   const UPDATE_HANDLER        = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
 
   const arg_flags = ns.flags([
-    ["hacknet_mgr",undefined]
-   ,["gang_mgr"   ,undefined]
-   ,["open_ui"    ,undefined]
-   ,["calc_only"  ,undefined]
+    ["domain",""]
+   ,["property",""]
+   ,["value",undefined]
   ]) 
 
-  if (arg_flags.gang_mgr) {
-    if (arg_flags.open_ui) {await send_update(ns, "gang_mgr", "open_ui", arg_flags.open_ui, UPDATE_HANDLER)}
-    if (arg_flags.calc_only) {await send_update(ns, "gang_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
-  }
+  // if (arg_flags.gang_mgr) {
+  //   if (arg_flags.open_ui) {await send_update(ns, "gang_mgr", "open_ui", arg_flags.open_ui, UPDATE_HANDLER)}
+  //   if (arg_flags.calc_only) {await send_update(ns, "gang_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
+  // }
 
-  if (arg_flags.hacknet_mgr) {
-    if (arg_flags.open_ui) {send_update(ns, "hacknet_mgr", "open_ui", arg_flags.open_ui, UPDATE_HANDLER)}
-    if (arg_flags.calc_only) {send_update(ns, "hacknet_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
+  // if (arg_flags.hacknet_mgr) {
+  //   if (arg_flags.open_ui) {send_update(ns, "hacknet_mgr", "open_ui", arg_flags.open_ui, UPDATE_HANDLER)}
+  //   if (arg_flags.calc_only) {send_update(ns, "hacknet_mgr", "calc_only", arg_flags.calc_only, UPDATE_HANDLER)}
+  // }
+
+  if (
+        !(arg_flags.domain === undefined)
+    &&  !(arg_flags.domain === "")
+    &&  !(arg_flags.property === undefined)
+    &&  !(arg_flags.property === "")
+    &&  !(arg_flags.value === undefined)
+  ) {
+    await send_update(ns, arg_flags.domain, arg_flags.property, arg_flags.value, UPDATE_HANDLER)
   }
 }

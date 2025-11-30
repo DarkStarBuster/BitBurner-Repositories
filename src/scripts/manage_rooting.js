@@ -1,5 +1,5 @@
-import { PORT_IDS } from "./util/dynamic/manage_ports"
-import { ScanFilter, request_scan } from "/src/scripts/util/dynamic/manage_server_scanning"
+import { PORT_IDS } from "/src/scripts/boot/manage_ports"
+import { ScanFilter, request_scan } from "/src/scripts/core/util_server_scanning"
 
 const DEBUG = false
 
@@ -19,11 +19,10 @@ function init(ns) {
  * @param {string} server 
  */
 function transfer_files(ns, server) {
+  if (!ns.fileExists("/scripts/boot/manage_ports.js"                  , server)) {ns.scp("/scripts/boot/manage_ports.js"                  , server)}
+  if (!ns.fileExists("/scripts/core/manage_server_scanning.js"        , server)) {ns.scp("/scripts/core/manage_server_scanning.js"        , server)}
   if (!ns.fileExists("/scripts/util/dynamic/grow_v3.js"               , server)) {ns.scp("/scripts/util/dynamic/grow_v3.js"               , server)}
   if (!ns.fileExists("/scripts/util/dynamic/hack_v3.js"               , server)) {ns.scp("/scripts/util/dynamic/hack_v3.js"               , server)}
-  if (!ns.fileExists("/scripts/util/dynamic/manage_ports.js"          , server)) {ns.scp("/scripts/util/dynamic/manage_ports.js"          , server)}
-  if (!ns.fileExists("/scripts/util/dynamic/manage_server_scanning.js", server)) {ns.scp("/scripts/util/dynamic/manage_server_scanning.js", server)}
-  if (!ns.fileExists("/scripts/util/dynamic/pid_provider.js"          , server)) {ns.scp("/scripts/util/dynamic/pid_provider.js"          , server)}
   if (!ns.fileExists("/scripts/util/dynamic/share.js"                 , server)) {ns.scp("/scripts/util/dynamic/share.js"                 , server)}
   if (!ns.fileExists("/scripts/util/dynamic/weaken_for_exp.js"        , server)) {ns.scp("/scripts/util/dynamic/weaken_for_exp.js"        , server)}
   if (!ns.fileExists("/scripts/util/dynamic/weaken_v3.js"             , server)) {ns.scp("/scripts/util/dynamic/weaken_v3.js"             , server)}
