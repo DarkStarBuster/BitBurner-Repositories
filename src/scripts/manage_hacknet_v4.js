@@ -404,7 +404,7 @@ export async function main(ns) {
         process_info.best_choice = "C"
         process_info.best_choice_idx = server_id
       }
-      if (ns.hacknet.getCacheUpgradeCost(server_id) < (0.01 * ns.getServerMoneyAvailable("home"))) {
+      if (ns.hacknet.getCacheUpgradeCost(server_id) < (ns.getPlayer().money)) {
         gain = 0
         process_info.gain_over_cost = 1
         process_info.gain_cost = ns.hacknet.getCacheUpgradeCost(server_id)
@@ -454,7 +454,8 @@ export async function main(ns) {
       // TODO: Perform the purchase only if the cost is less than a percentage of our current income stream?
       //       Though that does mean we hit a cap a fair bit earlier and can't *grind* our way to higher incomes from hacknets.
       if (
-          (ns.getServerMoneyAvailable("home") > (process_info.cost_mod * process_info.gain_cost))
+          ((control_params.player_mgr.total_income * 5) > (process_info.cost_mod * process_info.gain_cost))
+      &&  (ns.getPlayer().money > (process_info.cost_mod * process_info.gain_cost))
       &&  !process_info.calc_only
       ) {
         //ns.print("Performing Action")
@@ -485,7 +486,8 @@ export async function main(ns) {
       }
     }
     else if (
-        (ns.getServerMoneyAvailable("home") > (process_info.cost_mod * process_info.gain_cost))
+        ((control_params.player_mgr.total_income * 5) > (process_info.cost_mod * process_info.gain_cost))
+    &&  (ns.getPlayer().money > (process_info.cost_mod * process_info.gain_cost))
     &&  !process_info.focus_upgrades
     &&  !process_info.calc_only
     ) {
@@ -540,7 +542,7 @@ export async function main(ns) {
       if (ns.hacknet.numHashes() > 4) {
         ns.hacknet.spendHashes("Sell for Money",undefined,Math.floor(ns.hacknet.numHashes()/4))
       }
-      if (ns.getServerMoneyAvailable("home") > (process_info.cost_mod * minimum_cache_cost) && minimum_cache_cost_idx != -1) {
+      if (ns.getPlayer().money > (process_info.cost_mod * minimum_cache_cost) && minimum_cache_cost_idx != -1) {
         ns.hacknet.upgradeCache(minimum_cache_cost_idx)
         process_info.prev_choice = "H"
         process_info.prev_choice_idx = minimum_cache_cost_idx
