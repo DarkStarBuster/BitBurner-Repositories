@@ -1,6 +1,9 @@
 import { ControlParameters } from "/src/scripts/core/util_control_parameters";
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
+// Turn on detailed debugs and step through (await 1s for each log)
+const DEBUG = false
+
 // Hardcoded since the number does not increase beyond 8 when you get SF10.3
 const NUM_SLEEVES = 8;
 
@@ -91,10 +94,22 @@ function check_other_sleeves(ns, sleeve, faction) {
 }
 
 /**
+ * @param {string} message 
+ */
+async function log(ns, message) {
+  if (DEBUG) {
+    ns.print(`INFO: ${message}`)
+    await ns.sleep(1000)
+  }
+}
+
+/**
+ * @param {import("@ns").NS} ns 
  * @param {import("@ns").SleeveTask} task_a 
  * @param {import("@ns").SleeveTask} task_b 
  */
-function are_same_task(task_a, task_b) {
+function are_same_task(ns, task_a, task_b) {
+  //log(ns, `Checking if tasks are equal: A: ${task_a.type}, B: ${task_b.type}`)
   if (task_a === null || task_b === null) {return false}
   if (!(task_a.type === task_b.type)) {return false}
   switch (task_a.type) {
@@ -133,6 +148,7 @@ function are_same_task(task_a, task_b) {
  * @param {ControlParameters} ctrl_param 
  */
 function get_money_score(sleeve_task, ns, sleeve_idx, prc_info, ctrl_param) {
+  //log(ns, `Getting Money Score for Task: ${sleeve_task.type}`)
   const slv = ns.sleeve.getSleeve(sleeve_idx)
   let res
   switch (sleeve_task.type) {
@@ -163,6 +179,7 @@ function get_money_score(sleeve_task, ns, sleeve_idx, prc_info, ctrl_param) {
  * @param {ControlParameters} ctrl_param 
  */
 function get_karma_score(sleeve_task, ns, sleeve_idx, prc_info, ctrl_param) {
+  //log(ns, `Getting Karma Score for Task: ${sleeve_task.type}`)
   const slv = ns.sleeve.getSleeve(sleeve_idx)
   let res
   switch (sleeve_task.type) {
@@ -190,6 +207,7 @@ function get_karma_score(sleeve_task, ns, sleeve_idx, prc_info, ctrl_param) {
  * @param {ControlParameters} ctrl_param 
  */
 function get_rep_score(sleeve_task, ns, sleeve_idx, prc_info, ctrl_param) {
+  //log(ns, `Getting Rep Score for Task: ${sleeve_task.type}`)
   const slv = ns.sleeve.getSleeve(sleeve_idx)
   let res
   switch (sleeve_task.type) {
@@ -198,15 +216,21 @@ function get_rep_score(sleeve_task, ns, sleeve_idx, prc_info, ctrl_param) {
       //ns.tprint(`SLV: ${sleeve_idx}, COM: ${sleeve_task.companyName}, JOB: ${prc_info.player.jobs[sleeve_task.companyName]}, REP: ${res}`)
       return res
     case "FACTION":
+      res = 0
+      if (  sleeve_task.factionName === ns.enums.FactionName.Netburners
+        &&  !(sleeve_task.factionWorkType === ns.enums.FactionWorkType.hacking)
+      ) {
+        return res
+      }
       res = (ns.formulas.work.factionGains(slv, sleeve_task.factionWorkType, 0).reputation) * 1e9
       //ns.tprint(`SLV: ${sleeve_idx}, FAC WORK: ${sleeve_task.factionWorkType}, REP: ${res}`)
       return res
     case "CRIME":
-      let cr = sleeve_task.crimeType
-      const sc_a = ns.formulas.work.crimeSuccessChance(slv,cr)
-      const k = prc_info.crime_karma
-      const t = prc_info.crime_time
-      res = ((k[cr] * sc_a)/t[cr])
+      const cr = sleeve_task.crimeType
+      const ws = ns.formulas.work.crimeGains(slv, cr) 
+      const sc = ns.formulas.work.crimeSuccessChance(slv,cr)
+      const t = prc_info.crime_time // Time in seconds
+      res = ((ws.money * sc) / t[cr]) * ((ws.agiExp * sc)/t[cr]) * ((ws.defExp * sc)/t[cr]) * ((ws.dexExp * sc)/t[cr]) * ((ws.strExp * sc)/t[cr])
       //ns.tprint(`SLV: ${sleeve_idx}, CR: ${cr}, SCORE: ${((k[cr] * sc_a)/t[cr])}`)
       return res
     case "CLASS":
@@ -219,9 +243,10 @@ function get_rep_score(sleeve_task, ns, sleeve_idx, prc_info, ctrl_param) {
  * @param {import("@ns").NS} ns 
  * @param {ProcessInfo} prc_info
  * @param {ControlParameters} ctrl_param 
- * @returns {import("@ns").SleeveTask[]}
+ * @returns {Promise<import("@ns").SleeveTask[]>}
  */
-function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
+async function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
+  await log(ns, `Choosing Optimal Tasks`)
   /** @type {import("@ns").SleeveTask[]} */
   let return_val = []
   return_val.length = NUM_SLEEVES
@@ -230,6 +255,7 @@ function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
   possible_choices.length = NUM_SLEEVES
   // Loop over each Sleeve
   for (let idx = 0; idx < NUM_SLEEVES; idx++) {
+    await log(ns, `Populating Possible Choices for Sleeve ${idx}`)
     if (possible_choices[idx] === undefined) {possible_choices[idx] = []}
     let sleeve_obj = ns.sleeve.getSleeve(idx)
     if (sleeve_obj.sync != 100) {
@@ -249,8 +275,40 @@ function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
        ,tasksCompleted: 0
       })
     }
-    for (let work of prc_info.faction_work_arr) {
-      for (let faction of prc_info.player.factions.filter(faction => faction != ctrl_param.gang_mgr.gang_faction)) {
+    for (let faction of prc_info.player.factions.filter(faction => faction != ctrl_param.gang_mgr.gang_faction)) {
+      for (let work of prc_info.faction_work_arr) {
+        switch (work) {
+          case ns.enums.FactionWorkType.field:
+            if (  faction === ns.enums.FactionName.BitRunners
+              ||  faction === ns.enums.FactionName.CyberSec
+              ||  faction === ns.enums.FactionName.NiteSec
+              ||  faction === ns.enums.FactionName.Netburners
+              ||  faction === ns.enums.FactionName.TianDiHui
+            ) {
+              continue
+            }
+            break;
+          case ns.enums.FactionWorkType.hacking:
+            if (  faction === ns.enums.FactionName.Tetrads
+            ) {
+              continue
+            }
+            break
+          case ns.enums.FactionWorkType.security:
+            if (  faction === ns.enums.FactionName.BitRunners
+              ||  faction === ns.enums.FactionName.TheBlackHand
+              ||  faction === ns.enums.FactionName.TheCovenant
+              ||  faction === ns.enums.FactionName.CyberSec
+              ||  faction === ns.enums.FactionName.Daedalus
+              ||  faction === ns.enums.FactionName.TheDarkArmy
+              ||  faction === ns.enums.FactionName.Illuminati
+              ||  faction === ns.enums.FactionName.NiteSec
+              ||  faction === ns.enums.FactionName.Netburners
+            ) {
+              continue
+            }
+            break
+        }
         possible_choices[idx].push({
           type: "FACTION"
          ,factionWorkType: work
@@ -289,12 +347,11 @@ function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
 
   // Loop over each Sleeve
   for (let idx = 0; idx < NUM_SLEEVES; idx++) {
+    await log(ns, `Choosing most optimal choice for Sleeve ${idx}`)
     let choices = possible_choices[idx]
-    // ns.tprint(`SLV: ${idx}, CHOICES:`)
-    // for (let item of choices) {
-    //   ns.tprint(item)
-    // }
+    if (choices.length === 0) {ns.tprint(`ERROR: Zero length choice array`)}
     if (choices.length === 1) {return_val[idx] = choices[0]; continue}
+    await log(ns, `After Single Choices for ${idx}`)
     // Exclude already choosen tasks that can't be shared
     let filtered_choices = choices.filter(
       function(task) {
@@ -306,6 +363,8 @@ function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
         return true
       }
     )
+    if (filtered_choices.length === 0) {ns.tprint(`ERROR: Zero length filtered_choice array`)}
+    await log(ns, `After Exclusions for ${idx}`)
     
     // Negative Result means a before b
     // Zero Result means no change
@@ -313,7 +372,7 @@ function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
     if (!(ctrl_param.player_mgr.desire === undefined)) {
       switch (ctrl_param.player_mgr.desire) {
         case "gang":
-          //ns.tprint(`Check Karma`)
+          await log(ns, `Get Karma Scores for ${idx}`)
           filtered_choices.sort(
             function(a,b) {
               let a_score = get_karma_score(a, ns, idx, prc_info, ctrl_param)
@@ -323,7 +382,7 @@ function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
           )
           break
         case "rep":
-          //ns.tprint(`Check Reputation`)
+          await log(ns, `Get Reputation Scores for ${idx}`)
           filtered_choices.sort(
             function(a,b) {
               let a_score = get_rep_score(a, ns, idx, prc_info, ctrl_param)
@@ -349,7 +408,7 @@ function choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param) {
     return_val[idx] = filtered_choices[0]
   }
 
-  return return_val
+  return Promise.resolve(return_val)
 }
 
 
@@ -360,29 +419,39 @@ export async function main(ns) {
 
 
   // Get Control Parameters
-  while (CONTROL_PARAM_HANDLER.empty()) {await ns.sleep(4)}
+  while (CONTROL_PARAM_HANDLER.empty()) {await ns.sleep(400)}
   /** @type {ControlParameters} */
   let ctrl_param = JSON.parse(CONTROL_PARAM_HANDLER.peek())
   let prc_info = new ProcessInfo(ns)
 
+  ns.disableLog("ALL")
+  if (DEBUG) {ns.ui.openTail()}
+
   while (true) {
+    await log(ns, `Start Loop`)
     let karma = ns.heart.break()
     prc_info.player = ns.getPlayer()
+    await log(ns, `Check Ctrl Param Handler`)
     if (!CONTROL_PARAM_HANDLER.empty()) {
       ctrl_param = JSON.parse(CONTROL_PARAM_HANDLER.peek())
     }
+    await log(ns, `After Ctrl Param Handler Check`)
 
+    // if (prc_info.last_ui_update + (1000 * 120) < performance.now()) {
+    //   let sleeve_task_choices = await choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param)
+    //   //ns.tprint(sleeve_task_choices)
+    //   prc_info.last_ui_update = performance.now()
+    // }
+
+    
+    await log(ns, `Before Choices`)
     /** @type {import("@ns").SleeveTask[]} */
-    if (prc_info.last_ui_update + (1000 * 120) < performance.now()) {
-      let sleeve_task_choices = choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param)
-      //ns.tprint(sleeve_task_choices)
-      prc_info.last_ui_update = performance.now()
-    }
-
-    let sleeve_task_choices = choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param)
-
+    let sleeve_task_choices = await choose_optimal_sleeve_tasks(ns, prc_info, ctrl_param)
+    // ns.tprint(sleeve_task_choices)
+    await log(ns, `After Choices`)
     // Loop over each Sleeve
     for (let idx = 0; idx < NUM_SLEEVES; idx++) {
+      await log(ns, `Loop over Sleeve ${idx}`)
       let sleeve_obj = ns.sleeve.getSleeve(idx)
 
       // Do we install augments?
@@ -395,6 +464,7 @@ export async function main(ns) {
           if (aug.cost < (ctrl_param.player_mgr.total_income * 10)) { // If the aug costs less than 10 seconds of our total incomce we can afford it.
             to_purch.push(aug)
           }
+          await ns.sleep(4)
         }
         // Negative Result means a before b
         // Zero Result means no change
@@ -403,23 +473,29 @@ export async function main(ns) {
         for (let aug of to_purch) {
           while (prc_info.player.money < aug.cost) {await ns.sleep(10000)}
           ns.sleeve.purchaseSleeveAug(idx, aug.name)
+          await ns.sleep(4)
         }
       }
 
+      await log(ns, `After Augs for ${idx}`)
       // Get Current Task
       let curr_task = ns.sleeve.getTask(idx)
       let chos_task = sleeve_task_choices[idx]
 
-      if (are_same_task(curr_task, chos_task)) {} // No need to set the Sleeve to the same task it is already doing
+      if (are_same_task(ns, curr_task, chos_task)) {} // No need to set the Sleeve to the same task it is already doing
       else {
+        await log(ns, `Apply Optimal Choice for ${idx}`)
         switch (chos_task.type) {
           case "SYNCHRO":
+            await log(ns, `Synchronize for ${idx}`)
             ns.sleeve.setToSynchronize(idx)
             break;
           case "RECOVERY":
+            await log(ns, `Recovery for ${idx}`)
             ns.sleeve.setToShockRecovery(idx)
             break;
           case "CLASS":
+            await log(ns, `Class for ${idx}`)
             if (prc_info.gym_class_arr.includes(chos_task.classType)) {
               ns.sleeve.setToGymWorkout(idx, chos_task.location, chos_task.classType)
             }
@@ -428,18 +504,38 @@ export async function main(ns) {
             }
             break;
           case "COMPANY":
+            await log(ns, `Company for ${idx}: ${chos_task.companyName}`)
+            for (let idx2 = 0; idx2 < NUM_SLEEVES; idx2++) {
+              if (idx2 === idx) {continue}
+              let oth_sleeve_task = ns.sleeve.getTask(idx2)
+              if (oth_sleeve_task.type === "COMPANY" && oth_sleeve_task.companyName === chos_task.companyName) {
+                ns.sleeve.setToCommitCrime(idx2, ns.enums.CrimeType.mug)
+                break
+              }
+            }
             ns.sleeve.setToCompanyWork(idx, chos_task.companyName)
             break;
           case "CRIME":
+            await log(ns, `Crime for ${idx}`)
             ns.sleeve.setToCommitCrime(idx, chos_task.crimeType)
             break;
           case "FACTION":
+            await log(ns, `Faction for ${idx}: ${chos_task.factionName}, ${chos_task.factionWorkType}`)
+            for (let idx2 = 0; idx2 < NUM_SLEEVES; idx2++) {
+              if (idx2 === idx) {continue}
+              let oth_sleeve_task = ns.sleeve.getTask(idx2)
+              if (oth_sleeve_task.type === "FACTION" && oth_sleeve_task.factionName === chos_task.factionName) {
+                ns.sleeve.setToCommitCrime(idx2, ns.enums.CrimeType.mug)
+                break
+              }
+            }
             ns.sleeve.setToFactionWork(idx, chos_task.factionName, chos_task.factionWorkType)
             break
           case "BLADEBURNER":
           case "INFILTRATE":
           case "SUPPORT":
           default:
+            await log(ns, `Default for ${idx}`)
             ns.sleeve.setToCommitCrime(idx, "Mug") // Backup Option!
             break;
         }
