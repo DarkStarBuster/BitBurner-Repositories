@@ -1,5 +1,5 @@
-import { ServerStateInfo } from "/src/scripts/util_server_scanning";
-import { ControlParameters } from "/src/scripts/util_control_parameters";
+import { ServerStateInfo } from "/src/scripts/core/util_server_scanning";
+import { ControlParameters } from "/src/scripts/core/util_control_parameters";
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 
 class IncomeTime {
@@ -134,6 +134,8 @@ function execute_heartbeat_tasks(ns, prc_info, server_info, ctrl_param) {
     }
     // ns.tprint(`INFO: Update total income/s: $${ns.formatNumber(ctrl_param.player_mgr.total_income)}`)
   }
+
+  ctrl_param.player_mgr.player = ns.getPlayer()
 }
 
 /** @param {import("@ns").NS} ns */
