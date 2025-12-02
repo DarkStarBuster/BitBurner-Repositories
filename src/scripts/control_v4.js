@@ -454,6 +454,7 @@ async function start_ram_manager(ns, control_info, ram_provide_handler) {
  * @param {ProcessInfo} control_info
  */
 async function start_managers(ns, control_info) {
+  let home_ram = ns.getServerMaxRam("home")
   log(ns, "Calculate amount of RAM we need for our managers.")
   let root_ram    = ns.getScriptRam("/scripts/manage_rooting.js")
   let batch_ram   = ns.getScriptRam("/scripts/manage_hacking_v4.js")
@@ -461,8 +462,14 @@ async function start_managers(ns, control_info) {
   let pserv_ram   = ns.getScriptRam("/scripts/manage_pservers_v3.js")
   let cct_ram     = ns.getScriptRam("/scripts/manage_codecontracts.js")
   let free_ram    = ns.getScriptRam("/scripts/manage_free_ram_v3.js")
-  let gang_ram    = ns.getScriptRam("/scripts/manage_gang.js")
-  let sleeve_ram  = ns.getScriptRam("/scripts/manage_sleeves.js")
+  let gang_file   = "/scripts/manage_initial_gang.js"
+  let sleeve_file = "/scripts/manage_initial_sleeves.js"
+  if (home_ram > 128) {
+    gang_file   = "/scripts/manage_gang.js"
+    sleeve_file = "/scripts/manage_sleeves.js"
+  }
+  let gang_ram    = ns.getScriptRam(gang_file)
+  let sleeve_ram  = ns.getScriptRam(sleeve_file)
   let ram_needed  = round_ram_cost(
       root_ram
     + batch_ram
@@ -590,7 +597,7 @@ async function start_managers(ns, control_info) {
 
     exec_payload = new ExecRequestPayload(
       ns.pid,
-      "/scripts/manage_gang.js",
+      gang_file,
       "home",
       {threads:1,temporary:true},
       ["--parent_pid", ns.pid]
@@ -600,13 +607,13 @@ async function start_managers(ns, control_info) {
       ns.tprint("ERROR: Failed to launch Gang Manager after being allocated RAM.")
     }
     else {
-      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, gang_ram, "/scripts/manage_gang.js")
+      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, gang_ram, gang_file)
       control_info.gang_manager_pid = pid
     }
 
     exec_payload = new ExecRequestPayload(
       ns.pid,
-      "/scripts/manage_sleeves.js",
+      sleeve_file,
       "home",
       {threads:1,temporary:true},
       ["--parent_pid", ns.pid]
@@ -616,7 +623,7 @@ async function start_managers(ns, control_info) {
       ns.tprint("ERROR: Failed to launch Sleeve Manager after being allocated RAM.")
     }
     else {
-      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, sleeve_ram, "/scripts/manage_sleeves.js")
+      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, sleeve_ram, sleeve_file)
       control_info.sleeve_manager_pid = pid
     }
   }
@@ -636,6 +643,7 @@ async function reboot_process(ns, control_info, old_pid, filename) {
   let server = control_info.ram_state.servers["home"]
   let ram_cost = ns.getScriptRam(filename)
   if (isNaN(old_pid)) {
+    server.remove_dead(ns)
     let exec_payload = new ExecRequestPayload(
       ns.pid,
       filename,
@@ -732,6 +740,7 @@ async function reboot_process(ns, control_info, old_pid, filename) {
           ["--all"]
         )
         boot_pid = await request_exec(ns, exec_payload)
+        await ns.sleep(4)
       }
       // I mean we probably won't get much further than this due to reboot being called, but still better than not returning a value
       return Promise.resolve(0)
