@@ -2,6 +2,97 @@
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
+export class RAMResponsePayload {
+  pid;
+  action;
+  result;
+  reason;
+  host;
+  amount;
+  
+  /**
+   * @param {number} pid
+   * @param {string} action
+   * @param {string} result 
+   * @param {string} reason 
+   * @param {string | string[]} host 
+   * @param {number | number[]} amount 
+   */
+  constructor(pid, action, result, reason, host = "", amount = 0) {
+    this.pid = pid
+    this.result = result
+    this.reason = reason
+    this.host = host
+    this.amount = amount
+  }
+}
+
+export class RAMResponse {
+  action = "ram_response"
+  /** @type {RAMResponsePayload} */
+  payload;
+
+  constructor(payload) {
+    this.payload = payload
+  }
+}
+
+export class RAMEnquirePayload {
+  /** @type {number} */
+  pid;
+  /** @type {string} */
+  host;
+
+  constructor(pid, host, amount) {
+    this.pid    = pid
+    this.host   = host
+  }
+}
+
+export class RAMReleasePayload {
+  /** @type {number} */
+  pid;
+  /** @type {string} */
+  host;
+  /** @type {number} */
+  amount;
+
+  constructor(pid, host, amount) {
+    this.pid    = pid
+    this.host   = host
+    this.amount = amount
+  }
+}
+
+export class RAMRequestPayload {
+  /** @type {number} */
+  pid;
+  /** @type {string} */
+  filename;
+  /** @type {number} */
+  amount;
+  /** @type {boolean} */
+  incl_hashnet
+
+  constructor(pid, filename, amount, incl_hashnet = false) {
+    this.pid          = pid
+    this.filename     = filename
+    this.amount       = amount
+    this.incl_hashnet = incl_hashnet
+  }
+}
+
+export class RAMRequest {
+  action = "ram_request"
+  /** @type {RAMRequestPayload | RAMReleasePayload} */
+  payload;
+
+  /** @param {RAMRequestPayload | RAMReleasePayload} */
+  constructor(payload) {
+    this.payload = payload
+  }
+}
+
 /**
  * @param {import("@ns").NS} ns
  * @param {number} ram_amount
