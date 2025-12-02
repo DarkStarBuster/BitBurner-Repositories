@@ -1,5 +1,6 @@
 import { COLOUR, colourize} from "/src/scripts/util/constant_utilities"
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
+import { ControlParameters } from "/src/scripts/core/util_control_parameters";
 
 const MAX_NUM_MEMBERS = 12
 const NAMES = {
@@ -183,8 +184,9 @@ function update_TUI(ns, process_info, force_update = false) {
 /**
  * @param {import("@ns").NS} ns
  * @param {ProcessInfo} process_info
+ * @param {ControlParameters} control_params
  */
-async function create_gang(ns, process_info) {
+async function create_gang(ns, process_info, control_params) {
   let created = false
   let UPDATE_HANDLER = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
   while(!created) {
@@ -203,6 +205,18 @@ async function create_gang(ns, process_info) {
       }))) {
         await ns.sleep(4)
       }
+      if (control_params.player_mgr.desire === "gang") {
+        while(!UPDATE_HANDLER.tryWrite(JSON.stringify({
+          action : "update_control_param"
+         ,payload: {
+            domain  : "player_mgr"
+           ,property: "desire"
+           ,value   : "rep"
+          }
+        }))) {
+          await ns.sleep(4)
+        }
+      }
     }
     update_TUI(ns, process_info)
   }
@@ -212,7 +226,7 @@ async function create_gang(ns, process_info) {
  * @param {import("@ns").NS} ns 
  * @param {ProcessInfo} process_info 
  */
-function recruit_new_members(ns, process_info) {
+async function recruit_new_members(ns, process_info) {
   if (!ns.gang.canRecruitMember()) {
     return
   }
@@ -229,6 +243,7 @@ function recruit_new_members(ns, process_info) {
       }
     }
     can_recruit = ns.gang.canRecruitMember()
+    await ns.sleep(4)
   }
 }
 
@@ -346,6 +361,7 @@ export async function main(ns) {
     await ns.sleep(4)
   }
 
+  /** @type {ControlParameters} */
   let control_params = JSON.parse(CONTROL_PARAM_HANDLER.peek())
   let bitnode_mults  = JSON.parse(BITNODE_MULTS_HANDLER.peek())
  
@@ -358,7 +374,7 @@ export async function main(ns) {
   if (!process_info.in_gang) {
     process_info.most_recent_action = `Waiting to create a Gang with Faction ${process_info.gang_faction}`
     update_TUI(ns, process_info, true)
-    await create_gang(ns, process_info)
+    await create_gang(ns, process_info, control_params)
   }
   else {
     let UPDATE_HANDLER = ns.getPortHandle(PORT_IDS.UPDATE_HANDLER)
@@ -371,6 +387,18 @@ export async function main(ns) {
       }
     }))) {
       await ns.sleep(4)
+    }
+    if (control_params.player_mgr.desire === "gang") {
+      while(!UPDATE_HANDLER.tryWrite(JSON.stringify({
+        action : "update_control_param"
+       ,payload: {
+          domain  : "player_mgr"
+         ,property: "desire"
+         ,value   : "rep"
+        }
+      }))) {
+        await ns.sleep(4)
+      }
     }
   }
   // We can start Warfare again later, make sure it's not on by default.
@@ -401,7 +429,9 @@ export async function main(ns) {
          ,property: "gang_income"
          ,value   : process_info.gang_info.moneyGainRate
         }
-      })))
+      }))) {
+        await ns.sleep(4)
+      }
       process_info.last_gang_money_update = performance.now()
     }
     // Are we in a clash tick?
@@ -425,7 +455,7 @@ export async function main(ns) {
     if (process_info.members_cnt < MAX_NUM_MEMBERS) {
       process_info.most_recent_action = `Recruiting new members`
       update_TUI(ns, process_info, true)
-      recruit_new_members(ns, process_info)
+      await recruit_new_members(ns, process_info)
     }
 
     // Update Member Info - Every Second
