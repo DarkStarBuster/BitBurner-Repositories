@@ -1,6 +1,6 @@
 import {bitnode_mults} from "/src/scripts/util/bitnode_modifiers.js"
 import { COLOUR, colourize } from "/src/scripts/util/constant_utilities"
-import { request_scan } from "/src/scripts/core/manage_server_scanning"
+import { request_scan } from "/src/scripts/core/util_server_scanning"
 
 /**
  * Guess who didn't know that string.padStart and string.padEnd existed?
