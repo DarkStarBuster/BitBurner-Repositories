@@ -56,7 +56,7 @@ class PServMgrControlParameters {
 }
 
 class HacknetMgrControlParameters {
-  calc_only = false;
+  calc_only = true;
   threshold = 5e-6;
   cost_mod = 1;
   /** @type {string} */
@@ -91,6 +91,7 @@ class GangMgrControlParameters {
 class PlayerMgrControlParameters {
   desire = "gang";
   total_income = 0;
+  player;
 
   /**
    * @param {import("@ns").NS} ns
