@@ -1,5 +1,5 @@
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
-import { ScanFilter } from "/src/scripts/util_server_scanning"
+import { ScanFilter } from "/src/scripts/core/util_server_scanning"
 const DEPTH_LIMIT = 50
 const DEBUG = false
 
