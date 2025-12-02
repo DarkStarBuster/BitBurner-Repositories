@@ -77,6 +77,17 @@ class ServerInfo {
     return true
   }
 
+
+  /**
+   * @param {import("@ns").NS} ns 
+   */
+  remove_dead(ns) {
+    for (let n in this.processes) {
+      if (ns.isRunning(parseInt(n))) {continue}
+      this.remove_process(ns, n)
+    }
+  }
+
   remove_process(ns, pid) {
     if (this.processes[pid] === undefined) {
       ns.tprint(`Process with PID ${pid} not in state`)
