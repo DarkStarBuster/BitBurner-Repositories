@@ -4,7 +4,7 @@ import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 import { release_ram, request_ram } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
-const DO_LOG = false
+const DEBUG = true
 const LOG_FILENAME = "logs/manage_hacking_curr.txt"
 const PRIOR_LOG_FILENAME = "logs/manage_hacking_prior.txt"
 
@@ -42,6 +42,13 @@ function init(ns) {
 function disable_logs(ns){
   ns.disableLog("ALL")
   ns.enableLog("exec")
+}
+
+/** @param {import("@ns").NS} ns */
+function log(ns, message) {
+  if (DEBUG) {
+    ns.print(`INFO: ${message}`)
+  }
 }
 
 /**
@@ -252,6 +259,7 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
   let servers_to_prep = []
 
   for (let server of servers) {
+    if (server_info[server].hack_lvl_req > (ns.getPlayer().skills.hacking / 2)) {continue} // Do not consider servers that require a hacking level greater than half our current level
     if (
       (
           ns.getServerSecurityLevel(server) > server_info[server].min_diff
@@ -281,13 +289,14 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
 
   for (let server of hackable_servers){
     let batches_to_saturate_server = Math.max(Math.floor(ns.getWeakenTime(server) / control_params.hacker.hack_batch_time_interval), 1)
+    if (server_info[server].hack_lvl_req > (ns.getPlayer().skills.hacking / 2)) {continue}
     if (hack_batch_cnt + batches_to_saturate_server < control_params.hacker.total_hack_batch_limit) {
-      // log(ns, "Added " + server + " with " + batches_to_saturate_server + " to the list of servers we will hack")
+      log(ns, "Added " + server + " with " + batches_to_saturate_server + " to the list of servers we will hack")
       hack_batch_cnt += batches_to_saturate_server
       servers_to_hack.push(server)
     }
   }
-  // log(ns, "Total of " + hack_batch_cnt + " hack batches are expected to be spawned")
+  log(ns, "Total of " + hack_batch_cnt + " hack batches are expected to be spawned")
 
   for (let server of managed_servers) {
     if (servers_to_hack.indexOf(server) === -1) {
