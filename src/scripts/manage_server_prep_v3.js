@@ -1,7 +1,7 @@
 import { append_to_file, delete_file, rename_file } from "/src/scripts/util/static/file_management"
 
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
-import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { make_request, RAM_MESSAGES, RAMReleasePayload, RAMRequest, RAMRequestPayload, RAMDeathPayload } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
 const DO_LOG = false
@@ -115,12 +115,9 @@ export async function main(ns) {
           })
         )
         ns.tprint(`atExit handler for prep script: Write RAM Request death react (${our_pid})`)
-        RAM_REQUEST_HANDLER.write(
-          JSON.stringify({
-            "action" : "death_react"
-           ,"pid" : our_pid
-          })
-        )
+        let payload = new RAMDeathPayload(our_pid)
+        let request = new RAMRequest(RAM_MESSAGES.RAM_DEATH, payload)
+        RAM_REQUEST_HANDLER.write(JSON.stringify(request))
       })
 
       let attempted_single_thread = false
@@ -137,21 +134,28 @@ export async function main(ns) {
             while(ns.isRunning(script_info[0])) {
               await ns.sleep(4)
             }
-            await release_ram(ns, script_info[1], script_info[2])
+            let payload = new RAMReleasePayload(ns.self().pid, script_info[1], script_info[2])
+            let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+            let rel_resp = await make_request(ns, request)
+            if (!(rel_resp.payload.result === "OK")) {
+              ns.tprint(`ERROR: Failed to release RAM`)
+            }
           }
           threads_attempting = threads_remaining
           ram_needed = round_ram_cost(1.75 * threads_attempting)
           attempted_single_thread = false
         }
 
-        let response = await request_ram(ns, ram_needed)
-        if (response.result === "OK") {
+        let payload = new RAMRequestPayload(ns.self().pid, ns.self().filename, ram_needed)
+        let request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
+        let ram_resp = await make_request(ns, request)
+        if (ram_resp.payload.result === "OK") {
           // And use the RAM in the new batch
-          let weaken_pid = ns.exec("/scripts/util/dynamic/weaken_v3.js", response.server, {threads: threads_attempting, temporary: true}, arg_flags.target, 0)
+          let weaken_pid = ns.exec("/scripts/util/dynamic/weaken_v3.js", ram_resp.payload.host, {threads: threads_attempting, temporary: true}, arg_flags.target, 0)
           if (!(weaken_pid === 0)) {
             threads_launched += threads_attempting
             threads_remaining -= threads_attempting
-            weaken_scripts.push([weaken_pid, response.server, ram_needed])
+            weaken_scripts.push([weaken_pid, ram_resp.payload.host, ram_needed])
           }
         }
         else {
@@ -174,7 +178,12 @@ export async function main(ns) {
           while(ns.isRunning(script_info[0])) {
             await ns.sleep(4)
           }
-          await release_ram(ns, script_info[1], script_info[2])
+          let payload = new RAMReleasePayload(ns.self().pid, script_info[1], script_info[2])
+          let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+          let rel_resp = await make_request(ns, request)
+          if (!(rel_resp.payload.result === "OK")) {
+            ns.tprint(`ERROR: Failed to release RAM`)
+          }
         }
         else {
           all_released = true
@@ -216,12 +225,9 @@ export async function main(ns) {
             }
           })
         )
-        RAM_REQUEST_HANDLER.write(
-          JSON.stringify({
-            "action" : "death_react"
-           ,"pid" : our_pid
-          })
-        )
+        let payload = new RAMDeathPayload(our_pid)
+        let request = new RAMRequest(RAM_MESSAGES.RAM_DEATH, payload)
+        RAM_REQUEST_HANDLER.write(JSON.stringify(request))
       })
 
       let attempted_single_thread = false
@@ -240,27 +246,44 @@ export async function main(ns) {
           weaken_ram = round_ram_cost(1.75 * weaken_threads)
           grow_ram = round_ram_cost(1.75 * threads_attempting)
   
-          let total_response = await request_ram(ns, weaken_ram + grow_ram)
-          if(total_response.result === "OK") {
-            weaken_server = total_response.server
-            grow_server   = total_response.server
+          let tot_pay = new RAMRequestPayload(ns.self().pid, ns.self().filename, round_ram_cost(weaken_ram + grow_ram))
+          let tot_req = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, tot_pay)
+          let tot_resp = await make_request(ns, tot_req)
+          if(tot_resp.payload.result === "OK") {
+            weaken_server = tot_resp.payload.host
+            grow_server   = tot_resp.payload.host
           }
           else {
-            let grow_response   = await request_ram(ns, grow_ram)
-            let weaken_response = await request_ram(ns, weaken_ram)
+            let grow_pay = new RAMRequestPayload(ns.self().pid, ns.self().filename, grow_ram)
+            let grow_req = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, grow_pay)
+            let weak_pay = new RAMRequestPayload(ns.self().pid, ns.self().filename, weaken_ram)
+            let weak_req = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, weak_pay)
+
+            let grow_resp = await make_request(ns, grow_req)
+            let weak_resp = await make_request(ns, weak_req)
             if (
-                grow_response.result === "OK"
-            &&  weaken_response.result === "OK"
+                grow_resp.payload.result === "OK"
+            &&  weak_resp.payload.result === "OK"
             ) {
-              weaken_server = weaken_response.server
-              grow_server   = grow_response.server
+              weaken_server = weak_resp.payload.host
+              grow_server   = grow_resp.payload.host
             }
             else {
-              if (grow_response.result === "OK") {
-                await release_ram(ns, grow_response.server, grow_response.amount)
+              if (grow_resp.payload.result === "OK") {
+                grow_pay = new RAMReleasePayload(ns.self().pid, grow_resp.payload.host, grow_resp.payload.amount)
+                let grow_rel = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, grow_pay)
+                grow_resp = await make_request(ns, grow_rel)
+                if (!(grow_resp.payload.result === "OK")) {
+                  ns.tprint(`ERROR: Failed to release RAM`)
+                }
               }
-              if (weaken_response.result === "OK") {
-                await release_ram(ns, weaken_response.server, weaken_response.amount)
+              if (weak_resp.payload.result === "OK") {
+                weak_pay = new RAMReleasePayload(ns.self().pid, weak_resp.payload.host, weak_resp.payload.amount)
+                let weak_rel = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, weak_pay)
+                weak_resp = await make_request(ns, weak_rel)
+                if (!(weak_resp.payload.result === "OK")) {
+                  ns.tprint(`ERROR: Failed to release RAM`)
+                }
               }
               if (threads_attempting > 1) {
                 threads_attempting = Math.floor(threads_attempting / 2)
@@ -284,10 +307,17 @@ export async function main(ns) {
             while(ns.isRunning(script_info[0])) {
               await ns.sleep(4)
             }
-            // Release Weaken Scripts RAM
-            await release_ram(ns, script_info[1], script_info[2])
-            // Release Grow Scripts RAM
-            await release_ram(ns, script_info[4], script_info[5])
+
+            let weak_pay = new RAMReleasePayload(ns.self().pid, script_info[1], script_info[2])
+            let grow_pay = new RAMReleasePayload(ns.self().pid, script_info[4], script_info[5])
+            let weak_req = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, weak_pay)
+            let grow_req = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, grow_pay)
+
+            let weak_resp = await make_request(ns, weak_req)
+            let grow_resp = await make_request(ns, grow_req)
+
+            if (!(weak_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM`)}
+            if (!(grow_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM`)}
           }
           threads_attempting = threads_remaining
           attempted_single_thread = false
@@ -322,8 +352,17 @@ export async function main(ns) {
                 await ns.sleep(4)
               }
             }
-            await release_ram(ns, grow_server, grow_ram)
-            await release_ram(ns, weaken_server, weaken_ram)
+
+            let weak_pay = new RAMReleasePayload(ns.self().pid, weaken_server, weaken_ram)
+            let grow_pay = new RAMReleasePayload(ns.self().pid, grow_server, grow_ram)
+            let weak_req = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, weak_pay)
+            let grow_req = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, grow_pay)
+
+            let weak_resp = await make_request(ns, weak_req)
+            let grow_resp = await make_request(ns, grow_req)
+
+            if (!(weak_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM`)}
+            if (!(grow_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM`)}
           }
           else {
             ns.print("INFO Record Grow and Weaken scripts we launched")
@@ -350,10 +389,18 @@ export async function main(ns) {
         while(ns.isRunning(script_info[0])) {
           await ns.sleep(4)
         }
-        // Release Weaken Scripts RAM
-        await release_ram(ns, script_info[1], script_info[2])
-        // Release Grow Scripts RAM
-        await release_ram(ns, script_info[4], script_info[5])
+
+        let weak_pay = new RAMReleasePayload(ns.self().pid, script_info[1], script_info[2])
+        let grow_pay = new RAMReleasePayload(ns.self().pid, script_info[4], script_info[5])
+        let weak_req = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, weak_pay)
+        let grow_req = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, grow_pay)
+
+        // Release Weaken & Grow Scripts RAM
+        let weak_resp = await make_request(ns, weak_req)
+        let grow_resp = await make_request(ns, grow_req)
+
+        if (!(weak_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM`)}
+        if (!(grow_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM`)}
       }
     }
     else {

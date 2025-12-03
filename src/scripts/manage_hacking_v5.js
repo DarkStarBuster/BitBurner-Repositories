@@ -3,7 +3,7 @@ import { ServerStateInfo } from "/src/scripts/core/util_server_scanning";
 import { ControlParameters } from "/src/scripts//core/util_control_parameters";
 
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
-import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { make_request, RAM_MESSAGES, RAMReleasePayload, RAMRequest, RAMRequestPayload } from "/src/scripts/util/ram_management"
 
 class ChildInfoMessage {
   action;
@@ -34,13 +34,16 @@ class ChildProcessInfo {
   async make_ram_request(ns) {
     if (!(this.hostname === undefined)) {ns.tprint(`ERROR: Attempted to request child process RAM with host already provided.`)}
     if (!(this.ram_provided === undefined)) {ns.tprint(`ERROR: Attempted to request child process RAM whith RAM already provided.`)}
-    let response = await request_ram(ns, this.ram_usage)
-    if (response.result === "OK") {
-      this.hostname     = response.server
-      this.ram_provided = response.amount
+    let payload = new RAMRequestPayload(ns.self().pid, ns.self().filename, this.ram_usage)
+    let request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
+    let resp = await make_request(ns, request)
+    if (resp.payload.result === "OK") {
+      this.hostname     = resp.payload.host
+      this.ram_provided = resp.payload.amount
       return Promise.resolve(true)
     }
     else {
+      ns.tprint(`WARN: Unable to provide RAM upon request.`)
       return Promise.resolve(false)
     }
   }
@@ -49,8 +52,10 @@ class ChildProcessInfo {
   async make_ram_release(ns) {
     if (this.hostname === undefined) {ns.tprint(`ERROR: Attempted to release child process RAM with no host provided.`)}
     if (this.ram_provided === undefined) {ns.tprint(`ERROR: Attempted to release child process RAM with no RAM provided.`)}
-    let response = await release_ram(ns, this.hostname, this.ram_provided)
-    if (response.result === "OK") {
+    let payload = new RAMReleasePayload(ns.self().pid, this.hostname, this.ram_provided)
+    let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+    let resp = await make_request(ns, request)
+    if (resp.payload.result === "OK") {
       this.hostname = undefined
       this.ram_provided = undefined
       return Promise.resolve(true)
@@ -238,6 +243,7 @@ function mock_server(mock, server_info) {
 async function check_prep_managers(ns, process_info, control_params, bitnode_mults, server_info) {
   let hack_targets = process_info.get_hack_managers()
   let prep_targets = process_info.get_prep_managers()
+  let player = control_params.player_mgr.player
   let finished_preppers = []
 
   // Check if any preppers have finished their work

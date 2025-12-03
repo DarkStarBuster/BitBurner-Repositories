@@ -1,7 +1,7 @@
 import { ExecRequestPayload, KillRequestPayload, request_exec, request_kill } from "/src/scripts/core/manage_exec"
 
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
-import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { make_request, RAM_MESSAGES, RAMReleasePayload, RAMRequest, RAMRequestPayload } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
 const DEBUG = true
@@ -116,8 +116,11 @@ async function launch_child(ns, filename, server_to_target) {
   let ram_needed = ns.getScriptRam(filename)
   //log(ns, "RAM required for " + filename + " targetting " + server_to_target +" is calculated as " + ram_needed)
 
-  let request_response = await request_ram(ns, ram_needed)
-  if (!(request_response.result === "OK")) {
+  let payload = new RAMRequestPayload(ns.self().pid, ns.self().filename, ram_needed)
+  let request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
+  let ram_resp = await make_request(ns, request)
+
+  if (!(ram_resp.payload.result === "OK")) {
     //log(ns, "Did not find free RAM to launch child process: " + filename + " targetting " + server_to_target)
     return Promise.resolve(false)
   }
@@ -127,17 +130,19 @@ async function launch_child(ns, filename, server_to_target) {
   //   "target", server_to_target
   // ]
 
-  let exec_request = new ExecRequestPayload(ns.pid, filename, request_response.server, {threads:1, temporary:true}, script_args)
+  let exec_request = new ExecRequestPayload(ns.pid, filename, ram_resp.payload.host, {threads:1, temporary:true}, script_args)
   let pid = await request_exec(ns, exec_request)
   
   if (!(pid === 0)) {
-    add_child_process(ns, pid, filename, request_response.server, server_to_target)
+    add_child_process(ns, pid, filename, ram_resp.payload.host, server_to_target)
     return Promise.resolve(true)
   }
   else {
-    ns.tprint("ERROR Exec failed to launch child process: " + filename + " targetting " + server_to_target + " on " + request_response.server)
-    let release_response = await release_ram(ns, request_response.server, ram_needed)
-    if (!(release_response.result === "OK")) {
+    ns.tprint("ERROR Exec failed to launch child process: " + filename + " targetting " + server_to_target + " on " + ram_resp.payload.host)
+    let payload = new RAMReleasePayload(ns.self().pid, ram_resp.payload.host, ram_needed)
+    let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+    let resp = await make_request(ns, request)
+    if (!(resp.payload.result === "OK")) {
       ns.tprint("ERROR Failed to launch program RAM was not released")
     }
     return Promise.resolve(false)
@@ -173,8 +178,10 @@ async function kill_child(ns, childs_target) {
       )
       await request_kill(ns, kill_payload)
     }
-    let response = await release_ram(ns, pids_to_kill[num].server, pids_to_kill[num].ram_cost)
-    if (!(response.result === "OK")) {
+    let payload = new RAMReleasePayload(ns.self().pid, pids_to_kill[num].server, pids_to_kill[num].ram_cost)
+    let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+    let resp = await make_request(ns, request)
+    if (!(resp.payload.result === "OK")) {
       ns.tprint("ERROR Killed process RAM was not released.")
     }
     delete RAM_INFO[pids_to_kill[num].server].processes[pids_to_kill[num].pid]
@@ -205,9 +212,11 @@ async function check_manage(ns, control_params, bitnode_mults, server_info) {
       }
       else {
         //log(ns, "Killed PID " + pid + " as it is not running.")
-        let response = await release_ram(ns, server, RAM_INFO[server].processes[pid].ram_cost)
+        let payload = new RAMReleasePayload(ns.self().pid, server, RAM_INFO[server].processes[pid].ram_cost)
+        let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+        let resp = await make_request(ns, request)
         //log(ns, "RAM Release Response: " + response)
-        if (!(response.result === "OK")) {
+        if (!(resp.payload.result === "OK")) {
           ns.tprint("ERROR PID " + pid + " is dead, but we failed to release the RAM associated with it.")
         }
         delete RAM_INFO[server].processes[pid]

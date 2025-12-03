@@ -1,5 +1,5 @@
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
-import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { make_request, RAM_MESSAGES, RAMDeathPayload, RAMReleasePayload, RAMRequest, RAMRequestPayload } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
 class BatchPartInfo {
@@ -231,12 +231,9 @@ export async function main(ns) {
       })
     )
     ns.tprint(`atExit handler for hack script: Write RAM Request death react (${our_pid})`)
-    RAM_REQUEST_HANDLER.write(
-      JSON.stringify({
-        "action" : "death_react"
-       ,"pid" : our_pid
-      })
-    )
+    let payload = new RAMDeathPayload(our_pid)
+    let request = new RAMRequest(RAM_MESSAGES.RAM_DEATH, payload)
+    RAM_REQUEST_HANDLER.write(JSON.stringify(request))
   })
 
   const mock_server = ns.formulas.mockServer()
@@ -318,7 +315,10 @@ export async function main(ns) {
         // Release the Ram of the batch that just finished.
         PROCESS_INFO.current_action = "Releasing RAM due to more batches being queued than needed"
         update_TUI(ns, PROCESS_INFO, true)
-        await release_ram(ns, batch_server, batch_ram_use)
+        let payload = new RAMReleasePayload(ns.self().pid, batch_server, batch_ram_use)
+        let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+        let rel_resp = await make_request(ns, request)
+        if (!(rel_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM.`)}
         launch_batch = false
       }
       else if (batch_tracker.length < batches_needed) {
@@ -328,7 +328,10 @@ export async function main(ns) {
           PROCESS_INFO.current_action += "using existing RAM but releasing a bit of it"
           update_TUI(ns, PROCESS_INFO, true)
           // Release the difference between the two rams
-          await release_ram(ns, batch_server, batch_ram_use - ram_needed)
+          let payload = new RAMReleasePayload(ns.self().pid, batch_server, round_ram_cost(batch_ram_use - ram_needed))
+          let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+          let rel_resp = await make_request(ns, request)
+          if (!(rel_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM.`)}
           // And use the remaining RAM in the new batch
           launch_batch = true
           server_to_use = batch_server
@@ -337,13 +340,18 @@ export async function main(ns) {
           PROCESS_INFO.current_action += "releasing the old RAM and getting new RAM"
           update_TUI(ns, PROCESS_INFO, true)
           // Release the RAM from the previous batch
-          await release_ram(ns, batch_server, batch_ram_use)
+          let payload = new RAMReleasePayload(ns.self().pid, batch_server, batch_ram_use)
+          let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+          let rel_resp = await make_request(ns, request)
+          if (!(rel_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM.`)}
           // Request new RAM
-          let response = await request_ram(ns, ram_needed)
-          if (response.result === "OK") {
+          payload = new RAMRequestPayload(ns.self().pid, ns.self().filename, ram_needed)
+          request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
+          let req_resp = await make_request(ns, request)
+          if (req_resp.payload.result === "OK") {
             // And use the RAM in the new batch
             launch_batch = true
-            server_to_use = response.server
+            server_to_use = req_resp.payload.host
           }
           else {
             launch_batch = false
@@ -362,11 +370,13 @@ export async function main(ns) {
       PROCESS_INFO.current_action = "Launching new batch by getting new RAM"
       update_TUI(ns, PROCESS_INFO, true)
       // Request new RAM
-      let response = await request_ram(ns, ram_needed)
+      let payload = new RAMRequestPayload(ns.self().pid, ns.self().filename, ram_needed)
+      let request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
+      let ram_resp = await make_request(ns, request)
       // And use the RAM in the new batch
-      if (response.result === "OK") {
+      if (ram_resp.payload.result === "OK") {
         launch_batch = true
-        server_to_use = response.server
+        server_to_use = ram_resp.payload.host
       }
       else {
         launch_batch = false
@@ -384,7 +394,10 @@ export async function main(ns) {
             }
             else {
               // A prior batch has died, but we can't reuse, so we release the RAM
-              await release_ram(ns, batch_to_use[1], batch_to_use[2])
+              let payload = new RAMReleasePayload(ns.self().pid, batch_to_use[1], batch_to_use[2])
+              let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
+              let rel_resp = await make_request(ns, request)
+              if (!(rel_resp.payload.result === "OK")) {ns.tprint(`ERROR: Failed to release RAM.`)}
             }
           }
         }

@@ -2,7 +2,7 @@ import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 import { ExecRequestPayload, KillRequestPayload, request_exec, request_kill } from "/src/scripts/core/manage_exec"
 
 import { COLOUR, colourize } from "/src/scripts/util/constant_utilities"
-import { release_ram, request_ram } from "/src/scripts/util/ram_management"
+import { make_request, RAM_MESSAGES, RAMRequest, RAMRequestPayload, RAMResponse } from "/src/scripts/util/ram_management"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
 const LOG_COLOUR = colourize(COLOUR.MINT,9)
@@ -371,7 +371,7 @@ async function populate_information_ports(ns, control_info, control_param_handle
 async function start_ram_manager(ns, control_info, ram_provide_handler) {
   let exec_payload = new ExecRequestPayload(
     ns.pid,
-    "/scripts/core/manage_ram_v2.js",
+    "/scripts/core/manage_ram_v3.js",
     "home",
     {threads:1,temporary:true},
     ["--parent_pid", ns.pid]
@@ -386,13 +386,14 @@ async function start_ram_manager(ns, control_info, ram_provide_handler) {
   control_info.ram_manager_pid = ram_pid
   
   let awaiting_response = true
-  let ram_manager_response = {}
+  /** @type {RAMResponse} */
+  let resp
   while (awaiting_response) {
     while(ram_provide_handler.empty()) {
       await ns.sleep(4)
     }
-    ram_manager_response = JSON.parse(ram_provide_handler.peek())
-    if (parseInt(ram_manager_response.requester) === ns.pid) {
+    resp = JSON.parse(ram_provide_handler.peek())
+    if (parseInt(resp.payload.pid) === ns.pid) {
       awaiting_response = false
       ram_provide_handler.read()
     }
@@ -401,50 +402,50 @@ async function start_ram_manager(ns, control_info, ram_provide_handler) {
     }
   }
 
-  if (!(ram_manager_response.result === "OK")) {
+  if (!(resp.payload.result === "OK")) {
     ns.tprint("ERROR: RAM Manager did not Initialise successfully:")
-    ns.tprint(JSON.stringify(ram_manager_response))
+    ns.tprint(JSON.stringify(resp))
     ns.exit()
   }
   log(ns, "RAM Manager Initialised successfully.")
 
-  let control_ram =  ns.getScriptRam("/scripts/control_v4.js")
-  let exec_ram    =  ns.getScriptRam("/scripts/core/manage_exec.js")
-  let param_ram   =  ns.getScriptRam("/scripts/core/manage_control_parameters.js")
-  let ram_ram     =  ns.getScriptRam("/scripts/core/manage_ram_v2.js")
-  let scan_ram    =  ns.getScriptRam("/scripts/core/manage_server_scanning.js")
-
-  let ram_response = await request_ram(
-    ns
-   ,round_ram_cost(
+  let control_ram = ns.getScriptRam("/scripts/control_v4.js")
+  let exec_ram    = ns.getScriptRam("/scripts/core/manage_exec.js")
+  let param_ram   = ns.getScriptRam("/scripts/core/manage_control_parameters.js")
+  let ram_ram     = ns.getScriptRam("/scripts/core/manage_ram_v3.js")
+  let scan_ram    = ns.getScriptRam("/scripts/core/manage_server_scanning.js")
+  let total_ram   = round_ram_cost(
       control_ram
     + exec_ram
     + scan_ram
     + param_ram
     + ram_ram
-    )
   )
 
-  if (!(ram_response.result === "OK")) {
+  let payload = new RAMRequestPayload(ns.self().pid, ns.self().filename, total_ram)
+  let request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
+  let ram_resp = await make_request(ns, request)
+
+  if (!(ram_resp.payload.result === "OK")) {
     ns.tprint("ERROR: RAM Manager somehow failed to provide RAM for its, this and the control_parameter scripts existance despite all of them running up until this point")
-    ns.tprint(JSON.stringify(ram_response))
+    ns.tprint(JSON.stringify(ram_resp))
     ns.exit()
   }
-  else if (!(ram_response.server === "home")) {
-    ns.tprint(`ERROR: RAM Manager provided RAM on a server other than 'home' despite all of them being launched using ns.run(). Server: ${ram_response.server}`)
+  else if (!(ram_resp.payload.host === "home")) {
+    ns.tprint(`ERROR: RAM Manager provided RAM on a server other than 'home' despite all of them being launched using ns.run(). Server: ${ram_resp.payload.host}`)
     ns.exit()
   }
   else {
-    control_info.ram_state.add_server(ram_response.server, ram_response.amount)
-    control_info.ram_state.servers[ram_response.server].add_process(ns, ns.pid                              , control_ram, "/scripts/control_v4.js")
-    control_info.ram_state.servers[ram_response.server].add_process(ns, control_info.exec_manager_pid       , exec_ram   , "/scripts/core/manage_exec.js")
-    control_info.ram_state.servers[ram_response.server].add_process(ns, control_info.server_scan_manager_pid, scan_ram   , "/scripts/core/manage_server_scanning.js")
-    control_info.ram_state.servers[ram_response.server].add_process(ns, control_info.control_parameters_pid , param_ram  , "/scripts/core/manage_control_parameters.js")
-    control_info.ram_state.servers[ram_response.server].add_process(ns, ram_pid                             , ram_ram    , "/scripts/core/manage_ram_v2.js")
+    control_info.ram_state.add_server(ram_resp.payload.host, ram_resp.payload.amount)
+    control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, ns.pid                              , control_ram, "/scripts/control_v4.js")
+    control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, control_info.exec_manager_pid       , exec_ram   , "/scripts/core/manage_exec.js")
+    control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, control_info.server_scan_manager_pid, scan_ram   , "/scripts/core/manage_server_scanning.js")
+    control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, control_info.control_parameters_pid , param_ram  , "/scripts/core/manage_control_parameters.js")
+    control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, ram_pid                             , ram_ram    , "/scripts/core/manage_ram_v3.js")
   }
 
   log(ns,"RAM Manager has provided RAM for its own, this, the control parameter, server scanner and execution manager processes use.")
-  log(ns,`Server ${ram_response.server} has ${control_info.ram_state.servers[ram_response.server].assigned_ram} assigned RAM and ${control_info.ram_state.servers[ram_response.server].unused_ram} remaining unsued assigned RAM.`)
+  log(ns,`Server ${ram_resp.payload.host} has ${control_info.ram_state.servers[ram_resp.payload.host].assigned_ram} assigned RAM and ${control_info.ram_state.servers[ram_resp.payload.host].unused_ram} remaining unsued assigned RAM.`)
 
   return Promise.resolve()
 }
@@ -495,20 +496,22 @@ async function start_managers(ns, control_info) {
 
   log(ns, "Request " + ram_needed + " RAM for our other Manager processes.")
 
-  let ram_response = await request_ram(ns, ram_needed)
+  let payload = new RAMRequestPayload(ns.self().pid, ns.self().filename, ram_needed)
+  let request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
+  let ram_resp = await make_request(ns, request)
 
-  if (!(ram_response.result === "OK")) {
+  if (!(ram_resp.payload.result === "OK")) {
     ns.tprint(`ERROR: RAM Manager failed to provide RAM (${ram_needed}) for the Manager processes.`)
-    ns.tprint(JSON.stringify(ram_response))
+    ns.tprint(JSON.stringify(ram_resp))
     ns.exit()
   }
-  else if (!(ram_response.server === "home")) {
-    ns.tprint(`ERROR: RAM Manager provided RAM on a server other than 'home'. Server: ${ram_response.server}`)
+  else if (!(ram_resp.payload.host === "home")) {
+    ns.tprint(`ERROR: RAM Manager provided RAM on a server other than 'home'. Server: ${ram_resp.payload.host}`)
     ns.exit()
   }
   else {
-    control_info.ram_state.servers[ram_response.server].add_ram(ram_response.amount)
-    log(ns,"Server \"" + ram_response.server + "\" has had " + ram_response.amount + " additional RAM assigned to us.")
+    control_info.ram_state.servers[ram_resp.payload.host].add_ram(ram_resp.payload.amount)
+    log(ns,"Server \"" + ram_resp.payload.host + "\" has had " + ram_resp.payload.amount + " additional RAM assigned to us.")
   }
 
   let exec_payload = new ExecRequestPayload(
@@ -523,7 +526,7 @@ async function start_managers(ns, control_info) {
     ns.tprint("ERROR: Failed to launch Rooting Manager after being allocated RAM.")
   }
   else {
-    control_info.ram_state.servers[ram_response.server].add_process(ns, pid, root_ram, "/scripts/manage_rooting.js")
+    control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, pid, root_ram, "/scripts/manage_rooting.js")
     control_info.root_manager_pid = pid
   }
 
@@ -539,7 +542,7 @@ async function start_managers(ns, control_info) {
     ns.tprint("ERROR: Failed to launch Hack/Prep Manager Manager after being allocated RAM.")
   }
   else {
-    control_info.ram_state.servers[ram_response.server].add_process(ns, pid, batch_ram, "/scripts/manage_hacking_v4.js")
+    control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, pid, batch_ram, "/scripts/manage_hacking_v4.js")
     control_info.hacking_manager_pid = pid
   }
 
@@ -556,7 +559,7 @@ async function start_managers(ns, control_info) {
       ns.tprint("ERROR: Failed to launch Automatic Hacknet Upgrade Manager after being allocated RAM.")
     }
     else {
-      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, hashnet_ram, "/scripts/manage_hacknet_v4.js")
+      control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, pid, hashnet_ram, "/scripts/manage_hacknet_v4.js")
       control_info.hacknet_manager_pid = pid
     }
   
@@ -572,7 +575,7 @@ async function start_managers(ns, control_info) {
       ns.tprint("ERROR: Failed to launch Automatic Personal Server Manager after being allocated RAM.")
     }
     else {
-      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, pserv_ram, "/scripts/manage_pservers_v3.js")
+      control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, pid, pserv_ram, "/scripts/manage_pservers_v3.js")
       control_info.pserver_manager_pid = pid
     }
     // Either of these two processes can enqueue the Free Ram Manager
@@ -591,7 +594,7 @@ async function start_managers(ns, control_info) {
       ns.tprint("ERROR: Failed to launch Code Contract Manager after being allocated RAM.")
     }
     else {
-      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, cct_ram, "/scripts/manage_codecontracts.js")
+      control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, pid, cct_ram, "/scripts/manage_codecontracts.js")
       control_info.code_contract_manager_pid = pid
     }
 
@@ -607,7 +610,7 @@ async function start_managers(ns, control_info) {
       ns.tprint("ERROR: Failed to launch Gang Manager after being allocated RAM.")
     }
     else {
-      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, gang_ram, gang_file)
+      control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, pid, gang_ram, gang_file)
       control_info.gang_manager_pid = pid
     }
 
@@ -623,7 +626,7 @@ async function start_managers(ns, control_info) {
       ns.tprint("ERROR: Failed to launch Sleeve Manager after being allocated RAM.")
     }
     else {
-      control_info.ram_state.servers[ram_response.server].add_process(ns, pid, sleeve_ram, sleeve_file)
+      control_info.ram_state.servers[ram_resp.payload.host].add_process(ns, pid, sleeve_ram, sleeve_file)
       control_info.sleeve_manager_pid = pid
     }
   }

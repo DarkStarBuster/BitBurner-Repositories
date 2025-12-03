@@ -2,6 +2,15 @@
 import { PORT_IDS } from "/src/scripts/boot/manage_ports"
 import { round_ram_cost } from "/src/scripts/util/rounding"
 
+export const RAM_MESSAGES = {
+  RAM_RESPONSE: "ram_response",
+  RAM_REQUEST:  "ram_request",
+  RAM_RELEASE:  "ram_release",
+  RAM_ENQUIRE:  "ram_enquire",
+  RAM_DEMAND:   "ram_demand",
+  RAM_DEATH:    "ram_death"
+}
+
 export class RAMResponsePayload {
   pid;
   action;
@@ -20,6 +29,7 @@ export class RAMResponsePayload {
    */
   constructor(pid, action, result, reason, host = "", amount = 0) {
     this.pid = pid
+    this.action = action
     this.result = result
     this.reason = reason
     this.host = host
@@ -28,12 +38,41 @@ export class RAMResponsePayload {
 }
 
 export class RAMResponse {
-  action = "ram_response"
+  /** @type {string} */
+  action;
   /** @type {RAMResponsePayload} */
   payload;
 
-  constructor(payload) {
+  constructor(action = RAM_MESSAGES.RAM_RESPONSE, payload) {
+    this.action  = action
     this.payload = payload
+  }
+}
+
+export class RAMDeathPayload {
+  /** @type {number} */
+  pid;
+
+  constructor(pid) {
+    this.pid = pid
+  }
+}
+
+export class RAMDemandPayload {
+  /** @type {number} */
+  pid;
+  /** @type {string} */
+  filename
+  /** @type {string} */
+  host;
+  /** @type {number} */
+  amount;
+
+  constructor(pid, filename, host, amount) {
+    this.pid      = pid
+    this.filename = filename
+    this.host     = host
+    this.amount   = amount
   }
 }
 
@@ -83,21 +122,60 @@ export class RAMRequestPayload {
 }
 
 export class RAMRequest {
-  action = "ram_request"
-  /** @type {RAMRequestPayload | RAMReleasePayload} */
+  /** @type {string} */
+  action;
+  /** @type {RAMRequestPayload | RAMReleasePayload | RAMEnquirePayload | RAMDemandPayload | RAMDeathPayload} */
   payload;
 
-  /** @param {RAMRequestPayload | RAMReleasePayload} */
-  constructor(payload) {
+  /** @param {RAMRequestPayload | RAMReleasePayload | RAMEnquirePayload | RAMDemandPayload | RAMDeathPayload} payload*/
+  constructor(action = RAM_MESSAGES.RAM_REQUEST, payload) {
+    this.action  = action
     this.payload = payload
   }
 }
 
 /**
  * @param {import("@ns").NS} ns
+ * @param {RAMRequest} request
+ * @return {Promise<RAMResponse>}
+ */
+export async function make_request(ns, request) {
+  const RAM_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
+  const RAM_PROVIDE_HANDLER = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
+
+  while (!RAM_REQUEST_HANDLER.tryWrite(JSON.stringify(request))) {
+    await ns.sleep(4)
+  }
+
+  let awaiting_response = true
+  /** @type {RAMResponse} */
+  let resp
+
+  while (awaiting_response) {
+    while(RAM_PROVIDE_HANDLER.empty()) {
+      await ns.sleep(4)
+    }
+    
+    resp = JSON.parse(RAM_PROVIDE_HANDLER.peek())
+    if (parseInt(resp.payload.pid) === ns.pid) {
+      awaiting_response = false
+      RAM_PROVIDE_HANDLER.read()
+    }
+    else{
+      await ns.sleep(4)
+    }
+  }
+
+  return Promise.resolve(resp)
+}
+
+
+/**
+ * @param {import("@ns").NS} ns
  * @param {number} ram_amount
  */
 export async function request_ram(ns, ram_amount, include_hacknet = false) {
+  ns.tprint(`WARN: Depreciated request_ram call used by ${ns.pid}, (${ns.self().filename})`)
   const RAM_REQUEST_HANDLER = ns.getPortHandle(PORT_IDS.RAM_REQUEST_HANDLER)
   const RAM_PROVIDE_HANDLER = ns.getPortHandle(PORT_IDS.RAM_PROVIDE_HANDLER)
   // const LOG_COLOUR = colourize(COLOUR.AZURE,9)
@@ -110,22 +188,18 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
   //   ns.print(LOG_COLOUR + "Include Hacknet: " + include_hacknet)
   // }
 
-  let ram_request = {
-    "action"         : "request_ram"
-   ,"amount"         : rounded_ram
-   ,"include_hacknet": include_hacknet
-   ,"requester"      : ns.pid
-   ,"requester_file" : ns.getScriptName()
-  }
+  let payload = new RAMRequestPayload(ns.pid, ns.self().filename, rounded_ram, include_hacknet)
+  let request = new RAMRequest(RAM_MESSAGES.RAM_REQUEST, payload)
 
   //ns.print(LOG_COLOUR + "RAM: Awaiting space in RAM Request Handler to request RAM." + DEF_COLOUR)
-  while(!RAM_REQUEST_HANDLER.tryWrite(JSON.stringify(ram_request))){
+  while(!RAM_REQUEST_HANDLER.tryWrite(JSON.stringify(request))){
     await ns.sleep(4)
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting RAM Request Handler." + DEF_COLOUR)
 
   let awaiting_response = true
-  let ram_response = {}
+  /** @type {RAMResponse} */
+  let resp
   //ns.print(LOG_COLOUR + "RAM: Awaiting Response." + DEF_COLOUR)
   while (awaiting_response) {
     //ns.print(LOG_COLOUR + "RAM: Wait until Provider is not empty" + DEF_COLOUR)
@@ -133,9 +207,9 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
       await ns.sleep(4)
     }
     
-    ram_response = JSON.parse(RAM_PROVIDE_HANDLER.peek())
+    resp = JSON.parse(RAM_PROVIDE_HANDLER.peek())
     //ns.print(LOG_COLOUR + "RAM: Provider is not empty: " + ram_response + DEF_COLOUR)
-    if (parseInt(ram_response.requester) === ns.pid) {
+    if (parseInt(resp.payload.pid) === ns.pid) {
       //ns.print(LOG_COLOUR + "RAM: This is a response for us." + DEF_COLOUR)
       awaiting_response = false
       RAM_PROVIDE_HANDLER.read()
@@ -147,19 +221,19 @@ export async function request_ram(ns, ram_amount, include_hacknet = false) {
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting Response." + DEF_COLOUR)
 
-  if (!(ram_response.result === "OK")) {
+  if (!(resp.payload.result === "OK")) {
     //ns.print(LOG_COLOUR + "RAM: Request Failed." + DEF_COLOUR)
     return Promise.resolve({
-      "result": ram_response.result,
-      "reason": ram_response.failure_reason
+      "result": resp.payload.result,
+      "reason": resp.payload.reason
     })
   }
   else {
     //ns.print(LOG_COLOUR + "RAM: Request Succeded." + DEF_COLOUR)
     return Promise.resolve({
-      "result": ram_response.result,
-      "server": ram_response.server,
-      "amount": ram_response.amount
+      "result": resp.payload.result,
+      "server": resp.payload.host,
+      "amount": resp.payload.amount
     })
   }
 }
@@ -179,30 +253,27 @@ export async function release_ram(ns, server_to_release_from, ram_amount) {
   let rounded_ram = round_ram_cost(ram_amount)
   //ns.print(LOG_COLOUR + "RAM: Rounded RAM from " + ram_amount + " to " + rounded_ram)
 
-  let ram_request = {
-    "action"   : "release_ram",
-    "server"   : server_to_release_from,
-    "amount"   : rounded_ram,
-    "requester": ns.pid
-  }
+  let payload = new RAMReleasePayload(ns.pid, server_to_release_from, rounded_ram)
+  let request = new RAMRequest(RAM_MESSAGES.RAM_RELEASE, payload)
 
   //ns.print(LOG_COLOUR + "RAM: Awaiting space in RAM Request Handler to Release RAM.")
-  while(!RAM_REQUEST_HANDLER.tryWrite(JSON.stringify(ram_request))){
+  while(!RAM_REQUEST_HANDLER.tryWrite(JSON.stringify(request))){
     await ns.sleep(4)
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting RAM Request Handler." + DEF_COLOUR)
 
   let awaiting_response = true
-  let ram_response = {}
+  /** @type {RAMResponse} */
+  let resp
   //ns.print(LOG_COLOUR + "RAM: Awaiting Response." + DEF_COLOUR)
   while (awaiting_response) {
     //ns.print(LOG_COLOUR + "RAM: Wait until Provider is not empty" + DEF_COLOUR)
     while(RAM_PROVIDE_HANDLER.empty()) {
       await ns.sleep(4)
     }
-    ram_response = JSON.parse(RAM_PROVIDE_HANDLER.peek())
+    resp = JSON.parse(RAM_PROVIDE_HANDLER.peek())
     //ns.print(LOG_COLOUR + "RAM: Provider is not empty: " + ram_response + DEF_COLOUR)
-    if (parseInt(ram_response.requester) === ns.pid) {
+    if (parseInt(resp.payload.pid) === ns.pid) {
       //ns.print(LOG_COLOUR + "RAM: This is a response for us." + DEF_COLOUR)
       awaiting_response = false
       RAM_PROVIDE_HANDLER.read()
@@ -214,17 +285,17 @@ export async function release_ram(ns, server_to_release_from, ram_amount) {
   }
   //ns.print(LOG_COLOUR + "RAM: Finished Awaiting Response." + DEF_COLOUR)
 
-  if (!(ram_response.result === "OK")) {
+  if (!(resp.payload.result === "OK")) {
     //ns.print(LOG_COLOUR + "RAM: Request Failed." + DEF_COLOUR)
     return Promise.resolve({
-      "result": ram_response.result,
-      "reason": ram_response.failure_reason
+      "result": resp.payload.result,
+      "reason": resp.payload.reason
     })
   }
   else {
     //ns.print(LOG_COLOUR + "RAM: Request Succeded." + DEF_COLOUR)
     return Promise.resolve({
-      "result": ram_response.result
+      "result": resp.payload.result
     })
   }
 }

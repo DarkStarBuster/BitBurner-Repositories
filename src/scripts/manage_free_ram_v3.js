@@ -342,7 +342,13 @@ export async function main(ns) {
           break
       }
 
-      if (ns.hasRootAccess(server) && ns.hasRootAccess("foodnstuff")) await consume_ram(ns, p_servers, server, server_to_check, filename, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+      if (
+            ns.hasRootAccess(server)
+        &&  ns.hasRootAccess("foodnstuff")
+      ) {
+        // TODO: Update to use new RAM Manager
+        //await consume_ram(ns, p_servers, server, server_to_check, filename, RAM_REQUEST_HANDLER, RAM_PROVIDE_HANDLER)
+      }
     }
 
     await ns.sleep(4)
