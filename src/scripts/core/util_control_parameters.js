@@ -91,6 +91,7 @@ class GangMgrControlParameters {
 class PlayerMgrControlParameters {
   desire = "gang";
   total_income = 0;
+  /** @type {import("@ns").Player} */
   player;
 
   /**
