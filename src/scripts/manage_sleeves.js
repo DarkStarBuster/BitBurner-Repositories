@@ -457,23 +457,25 @@ export async function main(ns) {
       // Do we install augments?
       if (prc_info.last_aug_update[idx] + (1000 * 60) < performance.now()) {
         prc_info.last_aug_update[idx] = performance.now()
-        let sleeve_augs = ns.sleeve.getSleevePurchasableAugs(idx)
-        /** @type {import("@ns").AugmentPair[]} */
-        let to_purch = []
-        for (let aug of sleeve_augs) {
-          if (aug.cost < (ctrl_param.player_mgr.total_income * 10)) { // If the aug costs less than 10 seconds of our total incomce we can afford it.
-            to_purch.push(aug)
+        if (sleeve_obj.shock === 0) {
+          let sleeve_augs = ns.sleeve.getSleevePurchasableAugs(idx)
+          /** @type {import("@ns").AugmentPair[]} */
+          let to_purch = []
+          for (let aug of sleeve_augs) {
+            if (aug.cost < (ctrl_param.player_mgr.total_income * 10)) { // If the aug costs less than 10 seconds of our total incomce we can afford it.
+              to_purch.push(aug)
+            }
+            await ns.sleep(4)
           }
-          await ns.sleep(4)
-        }
-        // Negative Result means a before b
-        // Zero Result means no change
-        // Positive Result means b before a
-        to_purch.sort((a,b) => a.cost - b.cost)
-        for (let aug of to_purch) {
-          while (prc_info.player.money < aug.cost) {await ns.sleep(10000)}
-          ns.sleeve.purchaseSleeveAug(idx, aug.name)
-          await ns.sleep(4)
+          // Negative Result means a before b
+          // Zero Result means no change
+          // Positive Result means b before a
+          to_purch.sort((a,b) => a.cost - b.cost)
+          for (let aug of to_purch) {
+            while (prc_info.player.money < aug.cost) {await ns.sleep(10000)}
+            ns.sleeve.purchaseSleeveAug(idx, aug.name)
+            await ns.sleep(4)
+          }
         }
       }
 
