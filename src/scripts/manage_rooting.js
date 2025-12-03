@@ -16,26 +16,26 @@ function init(ns) {
 
 /**
  * @param {import("@ns").NS} ns 
- * @param {string} server 
+ * @param {string} server
  */
 function transfer_files(ns, server) {
-  if (!ns.fileExists("/scripts/boot/manage_ports.js"                  , server)) {ns.scp("/scripts/boot/manage_ports.js"                  , server)}
-  if (!ns.fileExists("/scripts/core/manage_server_scanning.js"        , server)) {ns.scp("/scripts/core/manage_server_scanning.js"        , server)}
-  if (!ns.fileExists("/scripts/util/dynamic/grow_v3.js"               , server)) {ns.scp("/scripts/util/dynamic/grow_v3.js"               , server)}
-  if (!ns.fileExists("/scripts/util/dynamic/hack_v3.js"               , server)) {ns.scp("/scripts/util/dynamic/hack_v3.js"               , server)}
-  if (!ns.fileExists("/scripts/util/dynamic/share.js"                 , server)) {ns.scp("/scripts/util/dynamic/share.js"                 , server)}
-  if (!ns.fileExists("/scripts/util/dynamic/weaken_for_exp.js"        , server)) {ns.scp("/scripts/util/dynamic/weaken_for_exp.js"        , server)}
-  if (!ns.fileExists("/scripts/util/dynamic/weaken_v3.js"             , server)) {ns.scp("/scripts/util/dynamic/weaken_v3.js"             , server)}
+  ns.scp("/scripts/boot/manage_ports.js"                  , server)
+  ns.scp("/scripts/core/manage_server_scanning.js"        , server)
+  ns.scp("/scripts/util/dynamic/grow_v3.js"               , server)
+  ns.scp("/scripts/util/dynamic/hack_v3.js"               , server)
+  ns.scp("/scripts/util/dynamic/share.js"                 , server)
+  ns.scp("/scripts/util/dynamic/weaken_for_exp.js"        , server)
+  ns.scp("/scripts/util/dynamic/weaken_v3.js"             , server)
 
-  if (!ns.fileExists("/scripts/util/static/file_management.js"        , server)) {ns.scp("/scripts/util/static/file_management.js"        , server)}
+  ns.scp("/scripts/util/static/file_management.js"        , server)
 
-  if (!ns.fileExists("/scripts/util/constant_utilities.js"            , server)) {ns.scp("/scripts/util/constant_utilities.js"            , server)}
-  if (!ns.fileExists("/scripts/util/ram_management.js"                , server)) {ns.scp("/scripts/util/ram_management.js"                , server)}
-  if (!ns.fileExists("/scripts/util/rounding.js"                      , server)) {ns.scp("/scripts/util/rounding.js"                      , server)}
-  
-  if (!ns.fileExists("/scripts/manage_server_hack_v3.js"              , server)) {ns.scp("/scripts/manage_server_hack_v3.js"              , server)}
-  if (!ns.fileExists("/scripts/manage_server_prep_v3.js"              , server)) {ns.scp("/scripts/manage_server_prep_v3.js"              , server)}
-  if (!ns.fileExists("/scripts/solve_cct.js"                          , server)) {ns.scp("/scripts/solve_cct.js"                          , server)}  
+  ns.scp("/scripts/util/constant_utilities.js"            , server)
+  ns.scp("/scripts/util/ram_management.js"                , server)
+  ns.scp("/scripts/util/rounding.js"                      , server)
+
+  ns.scp("/scripts/manage_server_hack_v3.js"              , server)
+  ns.scp("/scripts/manage_server_prep_v3.js"              , server)
+  ns.scp("/scripts/solve_cct.js"                          , server)
 }
 
 /** @param {import("@ns").NS} ns */
